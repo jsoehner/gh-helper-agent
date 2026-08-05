@@ -41,7 +41,9 @@ Key functions:
 | 2026-08-05 | Architecture | Created ADR-0001 (`docs/adr/0001-architecture-and-api-handling-strategy.md`) for API handling strategy. |
 | 2026-08-05 | Architecture | Created ADR-0002 (`docs/adr/0002-hybrid-dependency-upgrades-and-code-refactoring.md`) for dependency upgrades & refactoring. |
 | 2026-08-05 | Architecture | Created ADR-0003 (`docs/adr/0003-automated-resolution-of-merged-dependency-branch-issues.md`) for handling merged dependency issues & stale branches. |
-| 2026-08-05 | Documentation | Updated Gotchas in `README.md` with HTTP 422 branch validation rule learned during audit. |
+| 2026-08-05 | Architecture | Created ADR-0004 (`docs/adr/0004-all-repo-scan-fork-sync-and-stale-cleanup.md`) for full-account scanning, fork sync, and stale repo cleanup. |
+| 2026-08-05 | Architecture | Created ADR-0005 (`docs/adr/0005-local-divergence-evaluation-and-patch-diff-previews.md`) for local commit removal evaluation & patch diff previews during fork sync. |
+| 2026-08-05 | Documentation | Updated Gotchas in `README.md` with fork local divergence handling and diff quality review. |
 | 2026-08-05 | Memory System | Established `MEMORY.md` for in-repo persistent agent memory. |
 
 ---

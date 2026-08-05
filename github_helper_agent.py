@@ -42,6 +42,13 @@ class GitHubHelperAgent:
         except urllib.error.HTTPError as e:
             err_msg = e.read().decode('utf-8', errors='ignore')
             print(f"[-] HTTP {e.code} for {method} {url}: {err_msg}")
+            try:
+                err_data = json.loads(err_msg)
+            except Exception:
+                err_data = {"message": err_msg}
+            if isinstance(err_data, dict):
+                err_data["_http_status"] = e.code
+                return err_data
             return None
         except Exception as e:
             print(f"[-] Error calling {method} {url}: {e}")
@@ -164,11 +171,20 @@ class GitHubHelperAgent:
         for r in repos:
             self.process_repository(r["name"])
 
-    def sync_forks(self):
-        """Sync any forked repos with updates from their upstream/original repository."""
-        repos = self.get_all_repositories()
-        forked_repos = [r for r in repos if r.get("fork", False)]
-        print(f"[*] Found {len(forked_repos)} forked repositories to check for upstream sync.")
+    def sync_forks(self, target_repo=None):
+        """Sync forked repos with updates from their upstream/original repository."""
+        if target_repo:
+            repo_data = self._api_call(f"/repos/{self.owner}/{target_repo}")
+            if repo_data and isinstance(repo_data, dict):
+                forked_repos = [repo_data]
+            else:
+                print(f"[-] Repository {target_repo} not found under {self.owner}.")
+                return
+        else:
+            repos = self.get_all_repositories()
+            forked_repos = [r for r in repos if r.get("fork", False)]
+        
+        print(f"[*] Found {len(forked_repos)} forked repository/repositories to check for upstream sync.")
 
         for r in forked_repos:
             repo_name = r["name"]
@@ -183,16 +199,116 @@ class GitHubHelperAgent:
                 method="POST",
                 data={"branch": default_branch}
             )
-            if res and isinstance(res, dict) and res.get("message"):
-                msg = res.get("message")
-                if "successfully merged" in msg.lower() or "synced" in msg.lower():
+            if res and isinstance(res, dict):
+                msg = res.get("message", "")
+                status = res.get("_http_status")
+                if status == 409 or "conflict" in msg.lower():
+                    print(f"[!] Merge conflict detected for {repo_name} (branch: {default_branch}).")
+                    self._resolve_fork_conflict(r, default_branch)
+                elif "successfully merged" in msg.lower() or "synced" in msg.lower():
                     print(f"[+] Successfully synced {repo_name} with upstream.")
                 else:
-                    print(f"[Info] {repo_name}: {msg}")
+                    print(f"[-] Could not sync fork {repo_name}: {msg}")
             elif res is True:
                 print(f"[+] Successfully synced {repo_name} with upstream.")
             else:
                 print(f"[-] Could not sync fork {repo_name}.")
+
+    def _resolve_fork_conflict(self, repo, default_branch):
+        """
+        Attempts automated resolution when GitHub POST merge-upstream returns HTTP 409 conflict.
+        Creates a sync PR from upstream parent default branch into the fork.
+        """
+        repo_name = repo.get("name")
+        parent = repo.get("parent") or {}
+        parent_owner = parent.get("owner", {}).get("login")
+        parent_branch = parent.get("default_branch", default_branch)
+
+        if not parent_owner:
+            # If parent details were not fetched in full repo object, fetch single repo details
+            repo_details = self._api_call(f"/repos/{self.owner}/{repo_name}")
+            if repo_details and isinstance(repo_details, dict):
+                parent = repo_details.get("parent") or {}
+                parent_owner = parent.get("owner", {}).get("login")
+                parent_branch = parent.get("default_branch", default_branch)
+
+        if not parent_owner:
+            print(f"[-] Cannot auto-resolve conflict for {repo_name}: Parent repository information unavailable.")
+            return
+
+        head_ref = f"{parent_owner}:{parent_branch}"
+        print(f"[*] Analyzing divergence between {self.owner}/{repo_name}:{default_branch} and {parent_owner}/{repo_name}:{parent_branch}...")
+
+        # Compare default branch with upstream parent branch
+        comparison = self._api_call(f"/repos/{self.owner}/{repo_name}/compare/{default_branch}...{parent_owner}:{parent_branch}")
+        if comparison and isinstance(comparison, dict):
+            ahead_by = comparison.get("ahead_by", 0)
+            behind_by = comparison.get("behind_by", 0)
+            status = comparison.get("status", "unknown")
+            files = comparison.get("files", [])
+            modified_file_paths = [f.get("filename") for f in files if isinstance(f, dict) and f.get("filename")]
+
+            print(f"[*] Divergence Analysis for {repo_name}:")
+            print(f"    - Status: {status}")
+            print(f"    - Ahead of upstream by: {ahead_by} commit(s)")
+            print(f"    - Behind upstream by: {behind_by} commit(s)")
+            print(f"    - Modified files in diff ({len(modified_file_paths)}): {', '.join(modified_file_paths[:10])}{'...' if len(modified_file_paths) > 10 else ''}")
+
+            file_snippets = []
+            if files:
+                print("    - Code Snippets / Patch Preview of Committed Changes:")
+                for f in files[:5]:
+                    filename = f.get("filename", "")
+                    patch = f.get("patch", "")
+                    additions = f.get("additions", 0)
+                    deletions = f.get("deletions", 0)
+                    print(f"      * {filename} (+{additions} -{deletions}):")
+                    if patch:
+                        patch_lines = patch.split("\n")
+                        preview = "\n".join(["        " + l for l in patch_lines[:10]])
+                        print(preview)
+                        if len(patch_lines) > 10:
+                            print("        ...")
+                        file_snippets.append(f"#### `{filename}` (+{additions} -{deletions})\n```diff\n" + "\n".join(patch_lines[:15]) + ("\n..." if len(patch_lines) > 15 else "") + "\n```")
+                    else:
+                        print("        [Binary file or patch unavailable]")
+
+            commits = comparison.get("commits", [])
+            if commits:
+                print("    - Divergent local commits blocking clean upstream merge:")
+                for c in commits[:5]:
+                    c_msg = c.get("commit", {}).get("message", "").split("\n")[0]
+                    c_sha = c.get("sha", "")[:7]
+                    print(f"      * {c_sha}: {c_msg}")
+
+            if ahead_by > 0:
+                print(f"    [!] Consideration: Removing or rebasing/resetting these {ahead_by} local commit(s) (or hard-resetting branch `{default_branch}` to `{parent_owner}:{parent_branch}`) would allow a clean fast-forward merge from source/upstream.")
+
+        print(f"[*] Creating Sync Pull Request ({head_ref} -> {default_branch}) for informed manual/automated review...")
+        
+        snippets_formatted = "\n\n### Code Snippets / Patch Preview:\n" + "\n\n".join(file_snippets) if file_snippets else ""
+        pr_payload = {
+            "title": f"Merge upstream changes from {parent_owner}/{parent_branch}",
+            "body": (
+                f"Automated sync PR created by `gh-helper-agent` due to `POST /merge-upstream` HTTP 409 conflict.\n\n"
+                f"### Divergence Summary:\n"
+                f"- **Ahead of upstream**: {comparison.get('ahead_by', 'N/A') if isinstance(comparison, dict) else 'N/A'} commits\n"
+                f"- **Behind upstream**: {comparison.get('behind_by', 'N/A') if isinstance(comparison, dict) else 'N/A'} commits\n"
+                f"- **Conflicting/Modified files count**: {len(comparison.get('files', [])) if isinstance(comparison, dict) else 'N/A'}"
+                f"{snippets_formatted}"
+            ),
+            "head": head_ref,
+            "base": default_branch
+        }
+
+        pr_res = self._api_call(f"/repos/{self.owner}/{repo_name}/pulls", method="POST", data=pr_payload)
+        if pr_res and isinstance(pr_res, dict) and pr_res.get("html_url"):
+            print(f"[+] Conflict resolution PR created: {pr_res['html_url']}")
+        elif pr_res and isinstance(pr_res, dict) and "already exists" in pr_res.get("message", "").lower():
+            print(f"[Info] A synchronization Pull Request already exists for {repo_name}.")
+        else:
+            err_msg = pr_res.get("message") if isinstance(pr_res, dict) else pr_res
+            print(f"[-] Could not create conflict resolution PR for {repo_name}: {err_msg}")
 
     def identify_and_manage_stale_repos(self, days_inactive=365):
         """
@@ -258,20 +374,26 @@ class GitHubHelperAgent:
 def main():
     parser = argparse.ArgumentParser(description="GitHub Helper Agent - Automates PR merges, issue closures, fork sync, and repo maintenance.")
     parser.add_argument("--owner", default="jsoehner", help="GitHub repository owner/username")
+    parser.add_argument("--repo", help="Target a specific repository by name")
     parser.add_argument("--limit", type=int, default=10, help="Number of recent repositories to audit in default run mode")
     parser.add_argument("--scan-and-fix-all", action="store_true", help="Scan and fix all issues and PRs across ALL repositories")
-    parser.add_argument("--sync-forks", action="store_true", help="Sync all forked repositories with upstream changes")
+    parser.add_argument("--sync-forks", action="store_true", help="Sync forked repositories with upstream changes")
     parser.add_argument("--check-stale", action="store_true", help="Identify repos inactive for >1 year and ask for confirmation before deletion")
     parser.add_argument("--dry-run", action="store_true", help="Run audit without performing write actions")
     args = parser.parse_args()
 
     agent = GitHubHelperAgent(owner=args.owner, dry_run=args.dry_run)
 
-    if args.scan_and_fix_all or args.sync_forks or args.check_stale:
+    if args.repo and not (args.scan_and_fix_all or args.sync_forks or args.check_stale):
+        agent.process_repository(args.repo)
+    elif args.scan_and_fix_all or args.sync_forks or args.check_stale:
         if args.scan_and_fix_all:
-            agent.scan_and_fix_all()
+            if args.repo:
+                agent.process_repository(args.repo)
+            else:
+                agent.scan_and_fix_all()
         if args.sync_forks:
-            agent.sync_forks()
+            agent.sync_forks(target_repo=args.repo)
         if args.check_stale:
             agent.identify_and_manage_stale_repos()
     else:

@@ -71,6 +71,9 @@ This repository includes:
 9. **Fork Upstream Synchronization API Requirements**: Syncing forked repos using `/repos/{owner}/{repo}/merge-upstream` requires write access to the fork and that the upstream repository branch is accessible. If there are merge conflicts between upstream and the fork, the API will return a 409 status code requiring manual conflict resolution.
 10. **Repository Deletion (`delete_repo` Scope)**: Deleting repositories via `DELETE /repos/{owner}/{repo}` requires a token explicitly granted the `delete_repo` scope. Standard `repo` scope without `delete_repo` will return an HTTP 403 Forbidden error.
 11. **ISO 8601 Timestamp Parsing for Stale Detection**: GitHub API returns timestamps in ISO 8601 format with a trailing `Z`. Standard Python `datetime.fromisoformat` in older versions expects `+00:00` instead of `Z`. Always replace `Z` with `+00:00` before parsing to ensure cross-python version compatibility.
+12. **Divergent Local Commits Blocking Upstream Fork Merges**: Syncing a fork via `POST /merge-upstream` fails with HTTP 409 when the fork has local commits (`ahead_by > 0`) that conflict with upstream changes. Analyzing divergent commits (`ahead_by` vs `behind_by`) reveals that resetting or removing local commits (or hard-resetting the branch) enables clean fast-forward merges from the source repo.
+13. **Diff Patch Preview & Code Quality Review Before Merging**: Fork merge comparisons should inspect code patch snippets (`files[].patch`) for modified files prior to creating sync PRs or merging. Reviewing patch diffs ensures code quality, verifies intended changes, and prevents merging unwanted upstream or local modifications.
+
 
 
 ## 📄 License
