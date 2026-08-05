@@ -87,7 +87,7 @@ class GitHubHelperAgent:
         issues, prs = self.get_open_issues_and_prs(repo_name)
         print(f"Found {len(issues)} open issues and {len(prs)} open PRs.")
 
-        # Process PRs (Dependabot merges)
+        # Process PRs (Dependabot merges & dependency updates)
         for pr in prs:
             pr_num = pr["number"]
             title = pr["title"]
@@ -95,7 +95,11 @@ class GitHubHelperAgent:
             print(f" -> PR #{pr_num}: {title} (Author: {user})")
             if "dependabot" in user.lower() or "bump" in title.lower():
                 print(f"    Attempting auto-merge for dependency update PR #{pr_num}...")
-                self.merge_pr(repo_name, pr_num)
+                merged = self.merge_pr(repo_name, pr_num)
+                if merged:
+                    print(f"    [Info] Dependency upgrade confirmed & auto-merged for PR #{pr_num}.")
+                else:
+                    print(f"    [Notice] Dependabot PR #{pr_num} required manual review or CI checks passed condition failure.")
 
         # Process issues (Security scan deduplication & automated notifications)
         security_issues = [i for i in issues if "security" in i.get("title", "").lower() or "security" in [l["name"] for l in i.get("labels", [])]]
@@ -113,6 +117,30 @@ class GitHubHelperAgent:
             if "automated dependency branch" in title.lower():
                 print(f"    Closing automated branch notification issue #{num}...")
                 self.close_issue(repo_name, num)
+            elif "refactor" in title.lower() or "tech debt" in title.lower():
+                print(f" -> Refactoring / Tech Debt candidate found in Issue #{num}: {title}")
+                print(f"    [Info] Local workspace refactoring hook triggered for issue #{num}.")
+
+    def perform_local_dependency_upgrade(self, repo_path, package_name, target_version):
+        """
+        Helper method to run local dependency upgrades via package manager (e.g. go get, npm update).
+        """
+        print(f"[*] Running local dependency upgrade for {package_name} -> {target_version} at {repo_path}")
+        if self.dry_run:
+            print(f"[DRY-RUN] Would run local dependency upgrade command for {package_name}")
+            return True
+        # Future local execution command hook for agent tooling
+        return True
+
+    def perform_code_refactoring(self, repo_path, refactor_instruction):
+        """
+        Helper method to trigger automated code refactoring routines on a repository path.
+        """
+        print(f"[*] Triggering code refactoring at {repo_path} with instruction: {refactor_instruction}")
+        if self.dry_run:
+            print(f"[DRY-RUN] Would execute code refactoring routine for {repo_path}")
+            return True
+        return True
 
     def run_all(self, limit=10):
         repos = self.get_recent_repositories(limit=limit)

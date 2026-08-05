@@ -38,6 +38,7 @@ Key functions:
 | Date | Category | Summary |
 | --- | --- | --- |
 | 2026-08-05 | Architecture | Created ADR-0001 (`docs/adr/0001-architecture-and-api-handling-strategy.md`) for API handling strategy. |
+| 2026-08-05 | Architecture | Created ADR-0002 (`docs/adr/0002-hybrid-dependency-upgrades-and-code-refactoring.md`) for dependency upgrades & refactoring. |
 | 2026-08-05 | Documentation | Added Gotchas section to `README.md`. |
 | 2026-08-05 | Memory System | Established `MEMORY.md` for in-repo persistent agent memory. |
 
