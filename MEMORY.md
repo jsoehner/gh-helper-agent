@@ -23,6 +23,7 @@ Key functions:
 2. **Authentication & Token Handling**:
    - Requires `GITHUB_TOKEN` set in environment or loaded from local configuration (`~/.github_token`).
    - Token must have `repo` permissions to perform issue patching or PR merging.
+   - For git CLI operations (such as `git push`), **prefer using PAT authenticated HTTPS URLs (`https://${GITHUB_TOKEN}@github.com/...`) first** over SSH to prevent interactive key passphrase/askpass prompts.
    - Do **NOT** commit raw secret tokens to this repository.
 
 3. **Standard Library Constraints**:
