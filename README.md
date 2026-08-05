@@ -42,5 +42,14 @@ python3 github_helper_agent.py --owner jsoehner --limit 10
 
 This agent includes a prompt definition (`AGENT.md`) ready to be imported into subagent runners, AI coding assistants (such as Antigravity), or CI/CD automated workflow tasks.
 
+## ⚠️ Gotchas & Considerations
+
+1. **GitHub Issues API Returns Pull Requests**: In the GitHub REST API (`/repos/{owner}/{repo}/issues`), PRs are considered issues. Always filter out items containing the `"pull_request"` key when fetching actual issues to prevent accidentally treating PRs as issues.
+2. **Personal Access Token Scopes**: Writing or closing issues and merging PRs requires a PAT with `repo` scope (or fine-grained permissions for issues and pull requests). Unauthenticated or standard read requests will fail with HTTP 401/403 or silently fail write actions.
+3. **GitHub API Rate Limits**: Unauthenticated API calls are limited to 60 requests/hour per IP, whereas authenticated requests allow up to 5,000 requests/hour. Always pass `GITHUB_TOKEN` in high-throughput or automated environments.
+4. **Auto-Merge Conditions**: The agent's auto-merge mechanism uses squash merge (`PUT /repos/{owner}/{repo}/pulls/{number}/merge`). PRs must pass branch protection checks, CI status checks, and merge conflict checks; otherwise, the merge API call returns an HTTP 405 error.
+5. **Pagination Limits**: By default, listing endpoints (like `/user/repos` or `/issues`) return a limited page size (default 30, customizable up to 100 via `per_page`). When working across large repositories, handle pagination tokens or specify explicit limit parameters.
+
 ## 📄 License
 MIT License
+
