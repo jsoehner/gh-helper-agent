@@ -142,20 +142,140 @@ class GitHubHelperAgent:
             return True
         return True
 
+    def get_all_repositories(self):
+        """Fetch all repositories owned by user, handling pagination."""
+        print(f"[*] Fetching all repositories for {self.owner}...")
+        repos = []
+        page = 1
+        while True:
+            res = self._api_call(f"/user/repos?type=all&per_page=100&page={page}")
+            if not res:
+                break
+            repos.extend(res)
+            if len(res) < 100:
+                break
+            page += 1
+        return repos
+
+    def scan_and_fix_all(self):
+        """Scan and fix all issues and PRs across all repositories."""
+        repos = self.get_all_repositories()
+        print(f"[*] Starting scan and fix across {len(repos)} repositories...")
+        for r in repos:
+            self.process_repository(r["name"])
+
+    def sync_forks(self):
+        """Sync any forked repos with updates from their upstream/original repository."""
+        repos = self.get_all_repositories()
+        forked_repos = [r for r in repos if r.get("fork", False)]
+        print(f"[*] Found {len(forked_repos)} forked repositories to check for upstream sync.")
+
+        for r in forked_repos:
+            repo_name = r["name"]
+            default_branch = r.get("default_branch", "main")
+            print(f"\n[*] Checking fork sync for {repo_name} (branch: {default_branch})...")
+            if self.dry_run:
+                print(f"[DRY-RUN] Would sync fork {repo_name} with upstream branch {default_branch}")
+                continue
+
+            res = self._api_call(
+                f"/repos/{self.owner}/{repo_name}/merge-upstream",
+                method="POST",
+                data={"branch": default_branch}
+            )
+            if res and isinstance(res, dict) and res.get("message"):
+                msg = res.get("message")
+                if "successfully merged" in msg.lower() or "synced" in msg.lower():
+                    print(f"[+] Successfully synced {repo_name} with upstream.")
+                else:
+                    print(f"[Info] {repo_name}: {msg}")
+            elif res is True:
+                print(f"[+] Successfully synced {repo_name} with upstream.")
+            else:
+                print(f"[-] Could not sync fork {repo_name}.")
+
+    def identify_and_manage_stale_repos(self, days_inactive=365):
+        """
+        Identify all repos that have not been accessed/pushed/updated for more than 1 year (or specified days).
+        Ask for user confirmation before deleting each stale repo.
+        """
+        from datetime import datetime, timezone, timedelta
+
+        repos = self.get_all_repositories()
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_inactive)
+        stale_repos = []
+
+        print(f"[*] Checking for repositories inactive for more than {days_inactive} days (cutoff: {cutoff_date.isoformat()})...")
+
+        for r in repos:
+            pushed_at_str = r.get("pushed_at") or r.get("updated_at")
+            if not pushed_at_str:
+                continue
+            # Parse ISO 8601 timestamp
+            pushed_at = datetime.fromisoformat(pushed_at_str.replace("Z", "+00:00"))
+            if pushed_at < cutoff_date:
+                stale_repos.append((r, pushed_at_str))
+
+        if not stale_repos:
+            print("[+] No stale repositories found!")
+            return
+
+        print(f"\n[!] Found {len(stale_repos)} repository/repositories inactive for more than {days_inactive} days:")
+        for r, last_active in stale_repos:
+            print(f"  - {r['full_name']} (Last active: {last_active})")
+
+        for r, last_active in stale_repos:
+            repo_name = r["name"]
+            full_name = r["full_name"]
+            print(f"\n[!] Repository '{full_name}' has not been active since {last_active}.")
+            if self.dry_run:
+                print(f"[DRY-RUN] Would prompt for confirmation and delete repository {full_name}")
+                continue
+
+            confirm = input(f"Are you sure you want to DELETE repository '{full_name}'? (y/N): ").strip().lower()
+            if confirm in ["y", "yes"]:
+                print(f"[*] Deleting repository {full_name}...")
+                success = self.delete_repository(repo_name)
+                if success:
+                    print(f"[+] Repository {full_name} deleted successfully.")
+                else:
+                    print(f"[-] Failed to delete repository {full_name}.")
+            else:
+                print(f"[Info] Skipped deletion of {full_name}.")
+
+    def delete_repository(self, repo_name):
+        """Delete a repository given its name."""
+        if self.dry_run:
+            print(f"[DRY-RUN] Would delete repository {self.owner}/{repo_name}")
+            return True
+        return self._api_call(f"/repos/{self.owner}/{repo_name}", method="DELETE")
+
     def run_all(self, limit=10):
         repos = self.get_recent_repositories(limit=limit)
         for r in repos:
             self.process_repository(r["name"])
 
 def main():
-    parser = argparse.ArgumentParser(description="GitHub Helper Agent - Automates PR merges, issue closures, and maintenance.")
+    parser = argparse.ArgumentParser(description="GitHub Helper Agent - Automates PR merges, issue closures, fork sync, and repo maintenance.")
     parser.add_argument("--owner", default="jsoehner", help="GitHub repository owner/username")
-    parser.add_argument("--limit", type=int, default=10, help="Number of recent repositories to audit")
+    parser.add_argument("--limit", type=int, default=10, help="Number of recent repositories to audit in default run mode")
+    parser.add_argument("--scan-and-fix-all", action="store_true", help="Scan and fix all issues and PRs across ALL repositories")
+    parser.add_argument("--sync-forks", action="store_true", help="Sync all forked repositories with upstream changes")
+    parser.add_argument("--check-stale", action="store_true", help="Identify repos inactive for >1 year and ask for confirmation before deletion")
     parser.add_argument("--dry-run", action="store_true", help="Run audit without performing write actions")
     args = parser.parse_args()
 
     agent = GitHubHelperAgent(owner=args.owner, dry_run=args.dry_run)
-    agent.run_all(limit=args.limit)
+
+    if args.scan_and_fix_all or args.sync_forks or args.check_stale:
+        if args.scan_and_fix_all:
+            agent.scan_and_fix_all()
+        if args.sync_forks:
+            agent.sync_forks()
+        if args.check_stale:
+            agent.identify_and_manage_stale_repos()
+    else:
+        agent.run_all(limit=args.limit)
 
 if __name__ == "__main__":
     main()
