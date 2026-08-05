@@ -1,0 +1,51 @@
+# Repository Persistent Memory (`MEMORY.md`)
+
+This file stores persistent context, operational insights, architectural decisions, and repository guidelines for `gh-helper-agent`. Agents working in this codebase should read and update this document when significant changes or discoveries occur.
+
+---
+
+## 📌 Project Overview & Purpose
+
+`gh-helper-agent` is an automated repository maintenance tool designed to run periodic audits across GitHub repositories.
+Key functions:
+- Auto-merge Dependabot PRs using squash merges.
+- Deduplicate duplicate automated security scan issues (keeping the latest active issue open).
+- Close automated dependency notification issues.
+
+---
+
+## 🧠 Architectural Insights & Operational Memory
+
+1. **GitHub Issues Endpoint Traversal**:
+   - `/repos/{owner}/{repo}/issues` returns both standard issues **and** pull requests.
+   - Always filter out items containing `"pull_request"` in dictionary keys before processing issues.
+
+2. **Authentication & Token Handling**:
+   - Requires `GITHUB_TOKEN` set in environment or loaded from local configuration (`~/.github_token`).
+   - Token must have `repo` permissions to perform issue patching or PR merging.
+   - Do **NOT** commit raw secret tokens to this repository.
+
+3. **Standard Library Constraints**:
+   - `github_helper_agent.py` relies exclusively on Python standard library modules (`urllib.request`, `json`, `os`, `sys`, `argparse`). Keep external runtime dependencies to zero.
+
+4. **Safety & Execution Controls**:
+   - Always verify changes with `--dry-run` flag before executing write mutations in production environments.
+
+---
+
+## 📝 Change Log & Decision History
+
+| Date | Category | Summary |
+| --- | --- | --- |
+| 2026-08-05 | Architecture | Created ADR-0001 (`docs/adr/0001-architecture-and-api-handling-strategy.md`) for API handling strategy. |
+| 2026-08-05 | Documentation | Added Gotchas section to `README.md`. |
+| 2026-08-05 | Memory System | Established `MEMORY.md` for in-repo persistent agent memory. |
+
+---
+
+## 🛠️ Instructions for AI Agents
+
+When interacting with this repository:
+1. **Read `MEMORY.md`** first to align on repository context and operational rules.
+2. **Update `MEMORY.md`** whenever a new gotcha, architectural pattern, or significant feature is introduced.
+3. Keep entries structured, concise, and focused on maintaining codebase quality.

@@ -38,9 +38,12 @@ python3 github_helper_agent.py --owner jsoehner --limit 10 --dry-run
 python3 github_helper_agent.py --owner jsoehner --limit 10
 ```
 
-## 🤖 Subagent Definition
+## 🤖 Subagent & Context Management
 
-This agent includes a prompt definition (`AGENT.md`) ready to be imported into subagent runners, AI coding assistants (such as Antigravity), or CI/CD automated workflow tasks.
+This repository includes:
+- `AGENT.md`: Ready-to-import prompt definition for subagent runners, AI coding assistants (such as Antigravity), or CI/CD workflow tasks.
+- `MEMORY.md`: Persistent memory file tracking repository architecture decisions, operational gotchas, and change logs for automated agents.
+
 
 ## ⚠️ Gotchas & Considerations
 
