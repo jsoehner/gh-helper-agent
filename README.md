@@ -54,6 +54,8 @@ This repository includes:
 5. **Local Package Manager Fallback for Dependency Upgrades**: Auto-merging remote Dependabot PRs may fail if breaking changes or build failures occur in isolated packages (e.g. `/httphandler` subdirectories). A local execution hook (e.g. `go get`, `npm update`) is required to run test validation before committing upgrades.
 6. **Issue-Triggered Code Refactoring Scoping**: Automated refactoring hooks triggered by issue titles/labels (e.g. `refactor`, `tech debt`) must be explicitly scoped to prevent unintended AST modifications across multi-package repositories.
 7. **Pagination Limits**: By default, listing endpoints (like `/user/repos` or `/issues`) return a limited page size (default 30, customizable up to 100 via `per_page`). When working across large repositories, handle pagination tokens or specify explicit limit parameters.
+8. **Merged Dependency Branch PR Validation (HTTP 422)**: When automated dependency issues reference a branch (e.g., `automated/dependency-updates`), creating a PR will fail with HTTP 422 ("No commits between main and branch") if the changes are already merged. Always inspect branch diffs before PR creation, close obsolete issues, and delete the stale remote ref.
+
 
 ## 📄 License
 MIT License
