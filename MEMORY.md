@@ -46,6 +46,8 @@ Key functions:
 | 2026-08-05 | Documentation | Updated Gotchas in `README.md` with fork local divergence handling and diff quality review. |
 | 2026-08-05 | Memory System | Established `MEMORY.md` for in-repo persistent agent memory. |
 | 2026-08-07 | Architecture | Created ADR-0006 (`docs/adr/0006-environment-variable-loading-via-dotenv.md`) & implemented zero-dependency `.env` parsing in `github_helper_agent.py`. |
+| 2026-08-07 | Containerization | Created Dockerfile using Chainguard Python base image & ADR-0007 (`docs/adr/0007-containerization-via-chainguard-minimal-python-base-image.md`). |
+| 2026-08-07 | Automation | Created daily container rebuild & vulnerability scan workflow (`.github/workflows/container-daily-update.yml`) & ADR-0008 (`docs/adr/0008-daily-container-rebuild-and-vulnerability-scanning-workflow.md`). |
 
 ---
 

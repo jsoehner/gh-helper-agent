@@ -29,6 +29,32 @@ An automated maintenance and remediation agent for GitHub repositories.
    export GITHUB_TOKEN="ghp_your_github_token_here"
    ```
 
+## 🐳 Docker Containerization & Daily Workflow
+
+`gh-helper-agent` is containerized into a minimal, secure single-container image powered by **Chainguard Python** (`cgr.dev/chainguard/python`).
+
+### Run via Docker
+
+```bash
+# Build the container image locally
+docker build -t gh-helper-agent .
+
+# Run the agent in containerized mode
+docker run --rm \
+  -e GITHUB_TOKEN="ghp_your_github_token_here" \
+  -e GITHUB_OWNER="jsoehner" \
+  gh-helper-agent --all
+```
+
+### Daily Security & Base Image Update Workflow
+
+An automated GitHub Actions pipeline (`.github/workflows/container-daily-update.yml`) runs daily at 03:00 UTC to:
+1. Sourcing the latest Chainguard Python zero-vulnerability base image.
+2. Building and scanning the container image with **Trivy** (`CRITICAL,HIGH` severity gates).
+3. Pushing updated images to GitHub Container Registry (`ghcr.io/jsoehner/gh-helper-agent:latest`).
+4. Running automated maintenance across all target repositories.
+
+
 ## 🛠️ Usage
 
 ### Run Audit in Dry-Run Mode (Safe Preview)
