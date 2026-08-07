@@ -45,6 +45,7 @@ Key functions:
 | 2026-08-05 | Architecture | Created ADR-0005 (`docs/adr/0005-local-divergence-evaluation-and-patch-diff-previews.md`) for local commit removal evaluation & patch diff previews during fork sync. |
 | 2026-08-05 | Documentation | Updated Gotchas in `README.md` with fork local divergence handling and diff quality review. |
 | 2026-08-05 | Memory System | Established `MEMORY.md` for in-repo persistent agent memory. |
+| 2026-08-07 | Architecture | Created ADR-0006 (`docs/adr/0006-environment-variable-loading-via-dotenv.md`) & implemented zero-dependency `.env` parsing in `github_helper_agent.py`. |
 
 ---
 

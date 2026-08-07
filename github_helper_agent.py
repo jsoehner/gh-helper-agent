@@ -13,10 +13,30 @@ import urllib.request
 import urllib.parse
 import argparse
 
+def load_dotenv(dotenv_path=".env"):
+    """Load key-value pairs from a .env file into os.environ if present."""
+    if not os.path.isfile(dotenv_path):
+        return
+    try:
+        with open(dotenv_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, val = line.split("=", 1)
+                key = key.strip()
+                val = val.strip().strip("'\"")
+                if key and key not in os.environ:
+                    os.environ[key] = val
+    except Exception as e:
+        print(f"[!] Warning: Failed to load {dotenv_path}: {e}")
+
+load_dotenv()
+
 class GitHubHelperAgent:
-    def __init__(self, token=None, owner="jsoehner", dry_run=False):
+    def __init__(self, token=None, owner=None, dry_run=False):
         self.token = token or os.environ.get("GITHUB_TOKEN")
-        self.owner = owner
+        self.owner = owner or os.environ.get("GITHUB_OWNER", "jsoehner")
         self.dry_run = dry_run
         if not self.token:
             print("[!] Warning: GITHUB_TOKEN environment variable is not set.")
@@ -373,7 +393,7 @@ class GitHubHelperAgent:
 
 def main():
     parser = argparse.ArgumentParser(description="GitHub Helper Agent - Automates PR merges, issue closures, fork sync, and repo maintenance.")
-    parser.add_argument("--owner", default="jsoehner", help="GitHub repository owner/username")
+    parser.add_argument("--owner", default=os.environ.get("GITHUB_OWNER", "jsoehner"), help="GitHub repository owner/username")
     parser.add_argument("--repo", help="Target a specific repository by name")
     parser.add_argument("--limit", type=int, default=10, help="Number of recent repositories to audit in default run mode")
     parser.add_argument("--scan-and-fix-all", action="store_true", help="Scan and fix all issues and PRs across ALL repositories")
