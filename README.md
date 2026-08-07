@@ -39,10 +39,16 @@ An automated maintenance and remediation agent for GitHub repositories.
 # Build the container image locally
 docker build -t gh-helper-agent .
 
-# Run the agent in containerized mode
+# Standard run using environment variables
 docker run --rm \
   -e GITHUB_TOKEN="ghp_your_github_token_here" \
   -e GITHUB_OWNER="jsoehner" \
+  gh-helper-agent --all
+
+# Run with host Docker socket access (if running local container builds/scans)
+docker run --rm \
+  -v /run/docker.sock:/var/run/docker.sock \
+  --env-file .env \
   gh-helper-agent --all
 ```
 
@@ -102,6 +108,10 @@ This repository includes:
 14. **Automatic `.env` Configuration File Parsing**: When running locally or via automated schedulers, credentials such as `GITHUB_TOKEN` and `GITHUB_OWNER` can be defined in a `.env` file. A custom parser loads these key-value pairs without adding third-party dependencies, but existing OS environment variables take precedence.
 15. **Unauthenticated API Execution Pitfalls**: Calling `github_helper_agent.py` without loading `GITHUB_TOKEN` causes GitHub REST API calls (such as `/user/repos`) to return HTTP 401 Unauthorized or fail with unexpected data structures (e.g. error dictionary responses triggering `TypeError` on listing iterations).
 16. **Environment Variable Override Hierarchy**: Command line flags (e.g. `--owner`) explicitly take precedence over `.env` configuration keys (`GITHUB_OWNER`), which in turn override hardcoded fallback defaults (`jsoehner`). Ensure CLI flags are passed when targeting non-default accounts.
+17. **Host Docker Socket Mount Location (`/run/docker.sock`)**: On modern Linux systems (such as Fedora/RHEL), Moby/Docker daemon creates Unix sockets under `/run/docker.sock` with a symlink at `/var/run/docker.sock`. When running containerized tasks requiring host daemon access, mount `-v /run/docker.sock:/var/run/docker.sock`.
+18. **Socket Activation Permission Boundaries**: Accessing `/run/docker.sock` from inside a non-root container requires matching socket group permissions (`root:docker`, mode `0660`). If the container user lacks access, commands fail with socket connection or permission denied errors.
+19. **Distroless Container Debugging Limits**: Chainguard minimal Python images (`cgr.dev/chainguard/python`) do not contain a shell (`sh`/`bash`) or package manager (`apk`/`apt`). To debug container state interactively, multi-stage dev targets or ephemeral debug containers must be used.
+20. **Environment File Volume vs Variable Mounts**: When passing secrets via `.env` in containerized environments, `--env-file .env` injects key-value pairs into environment variables without exposing file system paths, avoiding file permission issues inside non-root containers.
 
 
 
