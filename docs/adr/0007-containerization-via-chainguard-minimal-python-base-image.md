@@ -122,50 +122,11 @@ Additionally, `gh-helper-agent` relies purely on Python standard library modules
 
 ## 5. Options considered
 
-### Option 1: Chainguard Minimal Python Image (`cgr.dev/chainguard/python`)
-
-**Description:** Multi-stage Dockerfile build using Chainguard distroless Python runtime image as final base.
-
-**Pros:**
-- Zero known vulnerabilities, updated daily.
-- Distroless architecture eliminates OS shell and package manager attack vectors.
-- Minimal image size (~30MB).
-
-**Cons:**
-- Lacks `bash` or `sh` inside runtime container.
-
-**Risk/control implications:** Industry-leading security posture.
-
-**Disposition:** Accepted
-
-### Option 2: Standard Official Python Image (`python:3.11-slim`)
-
-**Description:** Standard Debian-based slim Python base image.
-
-**Pros:**
-- Includes standard OS utilities and package managers for debugging.
-
-**Cons:**
-- Higher CVE scanner noise and unnecessary OS binaries.
-- Larger footprint (~150MB).
-
-**Risk/control implications:** Increased vulnerability exposure.
-
-**Disposition:** Rejected
-
-### Option 3: Status quo / do nothing
-
-**Description:** Run script directly on host systems without containerization.
-
-**Pros:**
-- No container build step.
-
-**Cons:**
-- Inconsistent execution across different OS environments.
-
-**Risk/control implications:** Platform inconsistency.
-
-**Disposition:** Rejected
+| Option | Description | Pros | Cons | Risk / Control Implications | Disposition |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Option 1: Chainguard Minimal Python Image (`cgr.dev/chainguard/python`)** | Multi-stage Dockerfile build using Chainguard distroless Python runtime image as final base. | <ul><li>Zero known vulnerabilities, updated daily.</li><li>Distroless architecture eliminates OS shell and package manager attack vectors.</li><li>Minimal image size (~30MB).</li></ul> | Lacks `bash` or `sh` inside runtime container. | Industry-leading security posture. | **Accepted** |
+| **Option 2: Standard Official Python Image (`python:3.11-slim`)** | Standard Debian-based slim Python base image. | Includes standard OS utilities and package managers for debugging. | <ul><li>Higher CVE scanner noise and unnecessary OS binaries.</li><li>Larger footprint (~150MB).</li></ul> | Increased vulnerability exposure. | **Rejected** |
+| **Option 3: Status quo / do nothing** | Run script directly on host systems without containerization. | No container build step. | Inconsistent execution across different OS environments. | Platform inconsistency. | **Rejected** |
 
 ## 6. Decision outcome
 

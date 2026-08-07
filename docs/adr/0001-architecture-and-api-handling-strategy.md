@@ -122,49 +122,11 @@ During initial implementation and testing, several architectural factors and Git
 
 ## 5. Options considered
 
-### Option 1: Pure Standard Library HTTP Client (`urllib.request` + `json`)
-
-**Description:** Implement HTTP requests and JSON serialization purely with Python standard library modules.
-
-**Pros:**
-- Zero external package installation or virtualenv management required.
-- Extremely fast startup time and low risk of third-party supply chain vulnerabilities.
-
-**Cons:**
-- Requires custom error handling for HTTP statuses and JSON payload decoding.
-
-**Risk/control implications:** Low risk, high stability.
-
-**Disposition:** Accepted
-
-### Option 2: Third-Party HTTP Libraries (`requests` / `httpx` / `PyGithub`)
-
-**Description:** Depend on external PyPI packages for GitHub REST API interaction.
-
-**Pros:**
-- Higher-level abstractions and simpler API call syntax.
-
-**Cons:**
-- Adds external dependencies requiring `pip install` and virtual environment setup.
-- Increases vulnerability scanning scope for container images.
-
-**Risk/control implications:** Moderate dependency management overhead.
-
-**Disposition:** Rejected
-
-### Option 3: Status quo / do nothing
-
-**Description:** Perform repository maintenance and issue/PR management manually.
-
-**Pros:**
-- No code to write.
-
-**Cons:**
-- Scalability bottle-neck across multi-repo organizations.
-
-**Risk/control implications:** Operational burden and delayed security updates.
-
-**Disposition:** Rejected
+| Option | Description | Pros | Cons | Risk / Control Implications | Disposition |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Option 1: Pure Standard Library HTTP Client (`urllib.request` + `json`)** | Implement HTTP requests and JSON serialization purely with Python standard library modules. | <ul><li>Zero external package installation or virtualenv management required.</li><li>Extremely fast startup time and low risk of third-party supply chain vulnerabilities.</li></ul> | Requires custom error handling for HTTP statuses and JSON payload decoding. | Low risk, high stability. | **Accepted** |
+| **Option 2: Third-Party HTTP Libraries (`requests` / `httpx` / `PyGithub`)** | Depend on external PyPI packages for GitHub REST API interaction. | Higher-level abstractions and simpler API call syntax. | <ul><li>Adds external dependencies requiring `pip install` and virtual environment setup.</li><li>Increases vulnerability scanning scope for container images.</li></ul> | Moderate dependency management overhead. | **Rejected** |
+| **Option 3: Status quo / do nothing** | Perform repository maintenance and issue/PR management manually. | No code to write. | Scalability bottle-neck across multi-repo organizations. | Operational burden and delayed security updates. | **Rejected** |
 
 ## 6. Decision outcome
 

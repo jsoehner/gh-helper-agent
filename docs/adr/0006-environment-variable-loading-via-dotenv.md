@@ -118,49 +118,11 @@ Without automatic `.env` reading, users or automated runners executing `python3 
 
 ## 5. Options considered
 
-### Option 1: Built-in Custom `.env` Parser
-
-**Description:** Read `.env` using standard Python file operations, ignoring comments and whitespace, populating `os.environ` only for unset keys.
-
-**Pros:**
-- Zero external package dependencies.
-- Immediate execution without `pip install`.
-- Respects OS shell variable overrides.
-
-**Cons:**
-- Limited support for complex multiline variable syntax.
-
-**Risk/control implications:** Low risk, high portability.
-
-**Disposition:** Accepted
-
-### Option 2: Add `python-dotenv` Dependency
-
-**Description:** Add `python-dotenv` to project requirements.
-
-**Pros:**
-- Full spec support for multiline and variable expansion.
-
-**Cons:**
-- Violates zero-dependency architectural constraint.
-
-**Risk/control implications:** External dependency overhead.
-
-**Disposition:** Rejected
-
-### Option 3: Status quo / do nothing
-
-**Description:** Require manual shell `export` commands before running the script.
-
-**Pros:**
-- No code to write.
-
-**Cons:**
-- Frequent HTTP 401 auth failures for users expecting `.env` support.
-
-**Risk/control implications:** Poor user experience.
-
-**Disposition:** Rejected
+| Option | Description | Pros | Cons | Risk / Control Implications | Disposition |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Option 1: Built-in Custom `.env` Parser** | Read `.env` using standard Python file operations, ignoring comments and whitespace, populating `os.environ` only for unset keys. | <ul><li>Zero external package dependencies.</li><li>Immediate execution without `pip install`.</li><li>Respects OS shell variable overrides.</li></ul> | Limited support for complex multiline variable syntax. | Low risk, high portability. | **Accepted** |
+| **Option 2: Add `python-dotenv` Dependency** | Add `python-dotenv` to project requirements. | Full spec support for multiline and variable expansion. | Violates zero-dependency architectural constraint. | External dependency overhead. | **Rejected** |
+| **Option 3: Status quo / do nothing** | Require manual shell `export` commands before running the script. | No code to write. | Frequent HTTP 401 auth failures for users expecting `.env` support. | Poor user experience. | **Rejected** |
 
 ## 6. Decision outcome
 

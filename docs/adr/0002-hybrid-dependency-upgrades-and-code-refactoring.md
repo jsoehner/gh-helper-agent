@@ -119,48 +119,11 @@ While `gh-helper-agent` automates remote Dependabot PR merging, several edge cas
 
 ## 5. Options considered
 
-### Option 1: Dual-Phase Remote API Merge + Local Fallback Hooks
-
-**Description:** Combine remote REST API auto-merging with local CLI package manager invocations when remote merges cannot proceed.
-
-**Pros:**
-- Solves branch protection and monorepo path limitations.
-- Enables local AST/formatting passes driven by issue tags.
-
-**Cons:**
-- Requires host environment to have target CLI tools installed.
-
-**Risk/control implications:** Low risk, high flexibility.
-
-**Disposition:** Accepted
-
-### Option 2: Remote API Merge Only
-
-**Description:** Restrict all operations to remote REST API calls.
-
-**Pros:**
-- Fully decoupled from local environment dependencies.
-
-**Cons:**
-- Cannot resolve monorepo dependency updates or issue-triggered local refactoring.
-
-**Risk/control implications:** Limits maintenance scope.
-
-**Disposition:** Rejected
-
-### Option 3: Status quo / do nothing
-
-**Description:** Manually resolve monorepo dependency updates and refactoring issues.
-
-**Pros:**
-- No automated local tool invocation.
-
-**Cons:**
-- High manual toil for developers.
-
-**Risk/control implications:** Technical debt accumulation.
-
-**Disposition:** Rejected
+| Option | Description | Pros | Cons | Risk / Control Implications | Disposition |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Option 1: Dual-Phase Remote API Merge + Local Fallback Hooks** | Combine remote REST API auto-merging with local CLI package manager invocations when remote merges cannot proceed. | <ul><li>Solves branch protection and monorepo path limitations.</li><li>Enables local AST/formatting passes driven by issue tags.</li></ul> | Requires host environment to have target CLI tools installed. | Low risk, high flexibility. | **Accepted** |
+| **Option 2: Remote API Merge Only** | Restrict all operations to remote REST API calls. | Fully decoupled from local environment dependencies. | Cannot resolve monorepo dependency updates or issue-triggered local refactoring. | Limits maintenance scope. | **Rejected** |
+| **Option 3: Status quo / do nothing** | Manually resolve monorepo dependency updates and refactoring issues. | No automated local tool invocation. | High manual toil for developers. | Technical debt accumulation. | **Rejected** |
 
 ## 6. Decision outcome
 

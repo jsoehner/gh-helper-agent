@@ -334,53 +334,11 @@ List the material drivers and constraints.
 
 ## 5. Options considered
 
-### Option 1: TBD
-
-**Description:** TBD
-
-**Pros:**
-
-- TBD
-
-**Cons:**
-
-- TBD
-
-**Risk/control implications:** TBD
-
-**Disposition:** Accepted / Rejected / Deferred
-
-### Option 2: TBD
-
-**Description:** TBD
-
-**Pros:**
-
-- TBD
-
-**Cons:**
-
-- TBD
-
-**Risk/control implications:** TBD
-
-**Disposition:** Accepted / Rejected / Deferred
-
-### Option 3: Status quo / do nothing
-
-**Description:** Continue without making the proposed architecture change.
-
-**Pros:**
-
-- TBD
-
-**Cons:**
-
-- TBD
-
-**Risk/control implications:** TBD
-
-**Disposition:** Accepted / Rejected / Deferred
+| Option | Description | Pros | Cons | Risk / Control Implications | Disposition |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Option 1: TBD** | TBD | <ul><li>TBD</li></ul> | TBD | TBD | Accepted / Rejected / Deferred |
+| **Option 2: TBD** | TBD | <ul><li>TBD</li></ul> | TBD | TBD | Accepted / Rejected / Deferred |
+| **Option 3: Status quo / do nothing** | Continue without making the proposed architecture change. | <ul><li>TBD</li></ul> | TBD | TBD | Accepted / Rejected / Deferred |
 
 ## 6. Decision outcome
 

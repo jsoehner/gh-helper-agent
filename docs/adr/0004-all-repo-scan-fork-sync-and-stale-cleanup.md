@@ -120,49 +120,11 @@ As user account repository footprints grow, maintaining health, synchronization,
 
 ## 5. Options considered
 
-### Option 1: Paginated Account Scan + REST Fork Sync + Interactive Stale Cleanup
-
-**Description:** Use paginated API calls for complete coverage, REST merge-upstream endpoint for forks, and 365-day cutoff with interactive confirmation for stale repos.
-
-**Pros:**
-- Full account coverage without missing repositories.
-- Zero manual web interface clicks for fork sync.
-- Strict safety guard preventing unintended repository deletion.
-
-**Cons:**
-- Deletion requires interactive CLI terminal context.
-
-**Risk/control implications:** High control, zero unintended deletion risk.
-
-**Disposition:** Accepted
-
-### Option 2: Automatic Background Deletion of Stale Repositories
-
-**Description:** Automatically delete repositories older than 365 days without prompting.
-
-**Pros:**
-- Fully autonomous cleanup.
-
-**Cons:**
-- High risk of destroying unpushed historical code or archived projects.
-
-**Risk/control implications:** Unacceptable risk of data loss.
-
-**Disposition:** Rejected
-
-### Option 3: Status quo / do nothing
-
-**Description:** Manually audit, sync, and delete repositories via GitHub Web UI.
-
-**Pros:**
-- No code to maintain.
-
-**Cons:**
-- High friction and time consumption across multi-repo accounts.
-
-**Risk/control implications:** Outdated forks and accumulating account noise.
-
-**Disposition:** Rejected
+| Option | Description | Pros | Cons | Risk / Control Implications | Disposition |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Option 1: Paginated Account Scan + REST Fork Sync + Interactive Stale Cleanup** | Use paginated API calls for complete coverage, REST merge-upstream endpoint for forks, and 365-day cutoff with interactive confirmation for stale repos. | <ul><li>Full account coverage without missing repositories.</li><li>Zero manual web interface clicks for fork sync.</li><li>Strict safety guard preventing unintended repository deletion.</li></ul> | Deletion requires interactive CLI terminal context. | High control, zero unintended deletion risk. | **Accepted** |
+| **Option 2: Automatic Background Deletion of Stale Repositories** | Automatically delete repositories older than 365 days without prompting. | Fully autonomous cleanup. | High risk of destroying unpushed historical code or archived projects. | Unacceptable risk of data loss. | **Rejected** |
+| **Option 3: Status quo / do nothing** | Manually audit, sync, and delete repositories via GitHub Web UI. | No code to maintain. | High friction and time consumption across multi-repo accounts. | Outdated forks and accumulating account noise. | **Rejected** |
 
 ## 6. Decision outcome
 

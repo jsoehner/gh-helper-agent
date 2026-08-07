@@ -121,48 +121,11 @@ Previously, when an HTTP 409 conflict occurred:
 
 ## 5. Options considered
 
-### Option 1: Divergence Analysis with Inline Patch Extraction
-
-**Description:** Inspect `ahead_by`/`behind_by` metrics and include file patch diffs (`files[].patch`) in sync PR bodies and terminal logs.
-
-**Pros:**
-- Complete transparency into conflict root causes.
-- Direct code previews without opening separate git web views.
-
-**Cons:**
-- Moderately larger API payload handling.
-
-**Risk/control implications:** Low risk, high utility.
-
-**Disposition:** Accepted
-
-### Option 2: Generic Sync PR without Diff Details
-
-**Description:** Create a generic PR stating a conflict occurred without diff details.
-
-**Pros:**
-- Simple implementation.
-
-**Cons:**
-- Forces maintainers to manually run local git commands to see what conflicted.
-
-**Risk/control implications:** Developer friction.
-
-**Disposition:** Rejected
-
-### Option 3: Status quo / do nothing
-
-**Description:** Fail silently on HTTP 409 conflicts.
-
-**Pros:**
-- No extra logic.
-
-**Cons:**
-- Out-of-sync forks remain broken.
-
-**Risk/control implications:** Unmaintained fork drift.
-
-**Disposition:** Rejected
+| Option | Description | Pros | Cons | Risk / Control Implications | Disposition |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Option 1: Divergence Analysis with Inline Patch Extraction** | Inspect `ahead_by`/`behind_by` metrics and include file patch diffs (`files[].patch`) in sync PR bodies and terminal logs. | <ul><li>Complete transparency into conflict root causes.</li><li>Direct code previews without opening separate git web views.</li></ul> | Moderately larger API payload handling. | Low risk, high utility. | **Accepted** |
+| **Option 2: Generic Sync PR without Diff Details** | Create a generic PR stating a conflict occurred without diff details. | Simple implementation. | Forces maintainers to manually run local git commands to see what conflicted. | Developer friction. | **Rejected** |
+| **Option 3: Status quo / do nothing** | Fail silently on HTTP 409 conflicts. | No extra logic. | Out-of-sync forks remain broken. | Unmaintained fork drift. | **Rejected** |
 
 ## 6. Decision outcome
 

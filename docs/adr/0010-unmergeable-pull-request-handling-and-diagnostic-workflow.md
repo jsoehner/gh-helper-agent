@@ -118,48 +118,11 @@ When `gh-helper-agent` attempts to auto-merge unmergeable PRs via `PUT /repos/{o
 
 ## 5. Options considered
 
-### Option 1: Structured Diagnostic Workflow with PR Comments
-
-**Description:** Catch HTTP 405/422 merge errors, inspect PR state, post diagnostic PR comments, and provide option for automated closure.
-
-**Pros:**
-- Immediate actionable feedback in PR discussions.
-- Audit output explicitly logs total items audited and unmergeable causes.
-
-**Cons:**
-- Consumes additional API calls for comment creation.
-
-**Risk/control implications:** Low risk, high maintainer utility.
-
-**Disposition:** Accepted
-
-### Option 2: Log Warning to Console Only
-
-**Description:** Log a local console warning without commenting on the GitHub PR.
-
-**Pros:**
-- Saves API requests.
-
-**Cons:**
-- PR authors looking at GitHub web interface have no context on why auto-merge bypassed their PR.
-
-**Risk/control implications:** Reduced visibility.
-
-**Disposition:** Rejected
-
-### Option 3: Status quo / do nothing
-
-**Description:** Ignore merge failure API exceptions silently.
-
-**Pros:**
-- Simple code path.
-
-**Cons:**
-- Silent failures and unmanaged PR accumulation.
-
-**Risk/control implications:** Operational blindness.
-
-**Disposition:** Rejected
+| Option | Description | Pros | Cons | Risk / Control Implications | Disposition |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Option 1: Structured Diagnostic Workflow with PR Comments** | Catch HTTP 405/422 merge errors, inspect PR state, post diagnostic PR comments, and provide option for automated closure. | <ul><li>Immediate actionable feedback in PR discussions.</li><li>Audit output explicitly logs total items audited and unmergeable causes.</li></ul> | Consumes additional API calls for comment creation. | Low risk, high maintainer utility. | **Accepted** |
+| **Option 2: Log Warning to Console Only** | Log a local console warning without commenting on the GitHub PR. | Saves API requests. | PR authors looking at GitHub web interface have no context on why auto-merge bypassed their PR. | Reduced visibility. | **Rejected** |
+| **Option 3: Status quo / do nothing** | Ignore merge failure API exceptions silently. | Simple code path. | Silent failures and unmanaged PR accumulation. | Operational blindness. | **Rejected** |
 
 ## 6. Decision outcome
 

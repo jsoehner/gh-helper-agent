@@ -120,48 +120,11 @@ When processing these issues during a maintenance review:
 
 ## 5. Options considered
 
-### Option 1: Diff Pre-Verification with Issue Closure & Ref Deletion
-
-**Description:** Query comparison API (`GET /repos/{owner}/{repo}/compare/{base}...{head}`) before creating PRs; close issues and delete branches if fully merged.
-
-**Pros:**
-- Complete elimination of empty PR errors and stale branch clutter.
-- Keeps repository metrics clean automatically.
-
-**Cons:**
-- Requires write permissions to delete git references.
-
-**Risk/control implications:** Safe with proper commit diff checks.
-
-**Disposition:** Accepted
-
-### Option 2: Attempt PR Creation & Catch HTTP 422 Exception
-
-**Description:** Attempt PR creation blindly and swallow HTTP 422 errors.
-
-**Pros:**
-- Simpler initial logic.
-
-**Cons:**
-- Leaves stale tracking issues open and orphaned branches in the repository.
-
-**Risk/control implications:** Accumulates repository noise.
-
-**Disposition:** Rejected
-
-### Option 3: Status quo / do nothing
-
-**Description:** Manually close tracking issues and delete merged branches.
-
-**Pros:**
-- No automated ref deletion risk.
-
-**Cons:**
-- Continuous manual maintenance overhead.
-
-**Risk/control implications:** Manual toil.
-
-**Disposition:** Rejected
+| Option | Description | Pros | Cons | Risk / Control Implications | Disposition |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Option 1: Diff Pre-Verification with Issue Closure & Ref Deletion** | Query comparison API (`GET /repos/{owner}/{repo}/compare/{base}...{head}`) before creating PRs; close issues and delete branches if fully merged. | <ul><li>Complete elimination of empty PR errors and stale branch clutter.</li><li>Keeps repository metrics clean automatically.</li></ul> | Requires write permissions to delete git references. | Safe with proper commit diff checks. | **Accepted** |
+| **Option 2: Attempt PR Creation & Catch HTTP 422 Exception** | Attempt PR creation blindly and swallow HTTP 422 errors. | Simpler initial logic. | Leaves stale tracking issues open and orphaned branches in the repository. | Accumulates repository noise. | **Rejected** |
+| **Option 3: Status quo / do nothing** | Manually close tracking issues and delete merged branches. | No automated ref deletion risk. | Continuous manual maintenance overhead. | Manual toil. | **Rejected** |
 
 ## 6. Decision outcome
 

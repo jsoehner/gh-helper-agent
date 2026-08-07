@@ -122,48 +122,11 @@ Without explicit socket volume mounting (`-v /run/docker.sock:/var/run/docker.so
 
 ## 5. Options considered
 
-### Option 1: Standardized Socket Volume Mount (`-v /run/docker.sock:/var/run/docker.sock`)
-
-**Description:** Document and support optional host socket mounting for containerized daemon interactions while keeping REST API mode isolated.
-
-**Pros:**
-- Enables local image scanning and container build checks.
-- Compatible with Linux systemd socket activation patterns.
-
-**Cons:**
-- Socket mounting carries elevated host privilege implications.
-
-**Risk/control implications:** Controlled elevation for specific local workflows.
-
-**Disposition:** Accepted
-
-### Option 2: Run Everything with Mandatory Socket Mounts
-
-**Description:** Require socket mounting for all container runs regardless of whether daemon access is needed.
-
-**Pros:**
-- Single execution command.
-
-**Cons:**
-- Unnecessarily grants host socket access to standard REST API maintenance runs.
-
-**Risk/control implications:** Unnecessary security exposure.
-
-**Disposition:** Rejected
-
-### Option 3: Status quo / do nothing
-
-**Description:** Leave socket activation failures unhandled and undocumented.
-
-**Pros:**
-- No documentation updates.
-
-**Cons:**
-- Cryptic `Cannot connect to Docker daemon` errors for container users.
-
-**Risk/control implications:** Operational confusion.
-
-**Disposition:** Rejected
+| Option | Description | Pros | Cons | Risk / Control Implications | Disposition |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Option 1: Standardized Socket Volume Mount (`-v /run/docker.sock:/var/run/docker.sock`)** | Document and support optional host socket mounting for containerized daemon interactions while keeping REST API mode isolated. | <ul><li>Enables local image scanning and container build checks.</li><li>Compatible with Linux systemd socket activation patterns.</li></ul> | Socket mounting carries elevated host privilege implications. | Controlled elevation for specific local workflows. | **Accepted** |
+| **Option 2: Run Everything with Mandatory Socket Mounts** | Require socket mounting for all container runs regardless of whether daemon access is needed. | Single execution command. | Unnecessarily grants host socket access to standard REST API maintenance runs. | Unnecessary security exposure. | **Rejected** |
+| **Option 3: Status quo / do nothing** | Leave socket activation failures unhandled and undocumented. | No documentation updates. | Cryptic `Cannot connect to Docker daemon` errors for container users. | Operational confusion. | **Rejected** |
 
 ## 6. Decision outcome
 
