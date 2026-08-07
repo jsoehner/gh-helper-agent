@@ -47,6 +47,19 @@ residual_risk_owner:
   role: "Repository Maintainer"
 exceptions_or_risk_acceptances: []
 technical_debt_items: []
+technical_debt_assessment:
+  impact: "None"
+  score: 0
+  rationale: "No new or unmanaged technical debt introduced by this decision."
+  existing_debt_references: []
+  new_or_changed_debt_items: []
+  debt_owner:
+    name: "jsoehner"
+    role: "Repository Maintainer"
+  remediation_plan: "N/A"
+  remediation_due_date: "N/A"
+  review_date: "N/A"
+  related_exceptions_or_risk_acceptances: []
 traceability:
   requirements:
     - "Dual-phase remote/local dependency upgrades"
@@ -195,9 +208,31 @@ Providing local fallback execution allows `gh-helper-agent` to handle complex mo
 - Risk acceptance or exception ID: N/A
 - Expiry or review date: 2027-08-02
 
-### Technical debt
-- None.
+## Technical debt assessment
 
+**Debt impact:** None
+
+**Technical debt score:** 0
+
+**Assessment rationale:**
+
+No new or unmanaged technical debt introduced by this architecture decision.
+
+| Debt item | New, increased, reduced, or none | Driver | Impact | Owner | Remediation plan | Due date | Evidence |
+|---|---|---|---|---|---|---|---|
+| None | None | N/A | None | jsoehner | N/A | N/A | Code review |
+
+### Existing debt affected
+
+- None
+
+### New or changed debt
+
+- None
+
+### Net debt impact
+
+Zero net technical debt.
 ## 10. Governance and acceptance
 
 | Role or forum | Named person | Responsibility | Evidence | Date |
