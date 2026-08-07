@@ -95,7 +95,6 @@ This repository includes:
 For a complete reference of operational constraints and edge cases, see the full [Troubleshooting & Gotchas Guide](docs/TROUBLESHOOTING.md).
 
 ### Latest Gotchas & Highlights:
-- **[Gotcha 18: Socket Activation Permission Boundaries](docs/TROUBLESHOOTING.md#gotcha-18)**: Accessing `/run/docker.sock` inside non-root containers requires matching socket group permissions (`root:docker`, mode `0660`).
 - **[Gotcha 19: Distroless Container Debugging Limits](docs/TROUBLESHOOTING.md#gotcha-19)**: Chainguard minimal Python images (`cgr.dev/chainguard/python`) omit shells (`sh`/`bash`) and package managers; use multi-stage build targets or ephemeral debug containers for shell inspection.
 - **[Gotcha 20: Environment File Volume vs Variable Mounts](docs/TROUBLESHOOTING.md#gotcha-20)**: `--env-file .env` injects credentials into container environment variables without mounting sensitive file system paths into non-root containers.
 - **[Gotcha 21: Unmergeable PR Handling & Diagnostic Commenting](docs/TROUBLESHOOTING.md#gotcha-21)**: PRs that fail auto-merge return HTTP 405/422 due to failing CI checks or git merge conflicts. The agent posts diagnostic comments on PR issue endpoints and tracks items for maintainer rebase or automated cleanup.

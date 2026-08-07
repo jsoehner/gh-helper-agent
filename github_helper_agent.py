@@ -71,14 +71,16 @@ class GitHubHelperAgent:
                 return json.loads(res_data) if res_data else True
         except urllib.error.HTTPError as e:
             err_msg = e.read().decode('utf-8', errors='ignore')
-            print(f"[-] HTTP {e.code} for {method} {url}: {err_msg}")
             try:
                 err_data = json.loads(err_msg)
             except Exception:
                 err_data = {"message": err_msg}
             if isinstance(err_data, dict):
                 err_data["_http_status"] = e.code
+                if "is not behind" not in err_msg.lower() and "archived" not in err_msg.lower():
+                    print(f"[-] HTTP {e.code} for {method} {url}: {err_msg}")
                 return err_data
+            print(f"[-] HTTP {e.code} for {method} {url}: {err_msg}")
             return None
         except Exception as e:
             print(f"[-] Error calling {method} {url}: {e}")
@@ -256,7 +258,7 @@ class GitHubHelperAgent:
     def process_repository(self, repo_name):
         issues, prs = self.get_open_issues_and_prs(repo_name)
         total_items = len(issues) + len(prs)
-        print(f"  [*] Repository: {repo_name:<36} | Total Open Items Audited: {total_items} ({len(issues)} issues, {len(prs)} PRs)")
+        print(f"  [*] Repository: {repo_name:<44} | Total Open Items Audited: {total_items} ({len(issues)} issues, {len(prs)} PRs)")
 
         repo_summary = {
             "issues_count": len(issues),
@@ -351,7 +353,7 @@ class GitHubHelperAgent:
 
         for repo_name, s in summaries.items():
             total_items = s["issues_count"] + s["prs_count"]
-            print(f"[*] Repository: {repo_name:<35} | Total Open Items Audited: {total_items} ({s['issues_count']} issues, {s['prs_count']} PRs)")
+            print(f"[*] Repository: {repo_name:<46} | Total Open Items Audited: {total_items} ({s['issues_count']} issues, {s['prs_count']} PRs)")
 
             if total_items == 0:
                 continue
@@ -383,9 +385,10 @@ class GitHubHelperAgent:
                 for num, title in s["unclosed_issues"]:
                     print(f"      - Issue #{num}: {title}")
 
-    def get_all_repositories(self):
+    def get_all_repositories(self, verbose=True):
         """Fetch all repositories owned by user, handling pagination."""
-        print(f"[*] Fetching all repositories for {self.owner}...")
+        if verbose:
+            print(f"[*] Fetching all repositories for {self.owner}...")
         return self._fetch_paginated_api(f"/user/repos?type=all")
 
     def scan_and_fix_all(self):
@@ -405,16 +408,27 @@ class GitHubHelperAgent:
                 print(f"[-] Repository {target_repo} not found under {self.owner}.")
                 return
         else:
-            repos = self.get_all_repositories()
-            forked_repos = [r for r in repos if r.get("fork", False)]
-        
-        print(f"[*] Found {len(forked_repos)} forked repository/repositories to check for upstream sync.")
+            repos = self.get_all_repositories(verbose=False)
+            forked_repos = [r for r in repos if r.get("fork", False) and not r.get("archived", False)]
 
-        for r in forked_repos:
+        total_forks = len(forked_repos)
+        print(f"[*] Found {total_forks} forked repository/repositories to check for upstream sync.")
+        is_tty = sys.stdout.isatty()
+
+        for idx, r in enumerate(forked_repos, 1):
             repo_name = r["name"]
             default_branch = r.get("default_branch", "main")
-            print(f"\n[*] Checking fork sync for {repo_name} (branch: {default_branch})...")
+            if r.get("archived", False):
+                continue
+
+            if is_tty:
+                sys.stdout.write(f"\r\033[K\033[5m[*]\033[0m Checking forked repository ({idx}/{total_forks}): {repo_name}...")
+                sys.stdout.flush()
+
             if self.dry_run:
+                if is_tty:
+                    sys.stdout.write("\r\033[K")
+                    sys.stdout.flush()
                 print(f"[DRY-RUN] Would sync fork {repo_name} with upstream branch {default_branch}")
                 continue
 
@@ -423,6 +437,11 @@ class GitHubHelperAgent:
                 method="POST",
                 data={"branch": default_branch}
             )
+
+            if is_tty:
+                sys.stdout.write("\r\033[K")
+                sys.stdout.flush()
+
             if res and isinstance(res, dict):
                 msg = res.get("message", "")
                 status = res.get("_http_status")
@@ -431,12 +450,18 @@ class GitHubHelperAgent:
                     self._resolve_fork_conflict(r, default_branch)
                 elif "successfully merged" in msg.lower() or "synced" in msg.lower():
                     print(f"[+] Successfully synced {repo_name} with upstream.")
+                elif "is not behind" in msg.lower() or "archived" in msg.lower():
+                    pass
                 else:
                     print(f"[-] Could not sync fork {repo_name}: {msg}")
             elif res is True:
                 print(f"[+] Successfully synced {repo_name} with upstream.")
             else:
                 print(f"[-] Could not sync fork {repo_name}.")
+
+        if is_tty:
+            sys.stdout.write("\r\033[K")
+            sys.stdout.flush()
 
     def _resolve_fork_conflict(self, repo, default_branch):
         repo_name = repo.get("name")
