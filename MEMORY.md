@@ -51,6 +51,8 @@ Key functions:
 | 2026-08-07 | Architecture | Documented host Docker socket mounting & created ADR-0009 (`docs/adr/0009-container-host-socket-mount-and-socket-activation-handling.md`). |
 | 2026-08-07 | Workflow | Implemented unmergeable PR management workflow with diagnostic PR commenting, local rebase/conflict resolution hooks, and status tracking in `github_helper_agent.py`. |
 | 2026-08-07 | Documentation | Refactored Gotchas into dedicated `docs/TROUBLESHOOTING.md` guide; updated `README.md` with links to the last 3 added gotchas (19-21). |
+| 2026-08-07 | Architecture | Created ADR-0011 (`docs/adr/0011-decoupled-dependency-update-and-security-testing-workflows.md`), superseding ADR-0008, to separate dependency update and security testing CI workflows with Node 24 support and explicit 40-character SHA pinning. Added Gotchas 22-25 to `docs/TROUBLESHOOTING.md` and updated `README.md`. |
+
 
 ---
 

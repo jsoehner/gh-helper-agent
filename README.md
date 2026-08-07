@@ -54,11 +54,9 @@ docker run --rm \
 
 ### Daily Security & Base Image Update Workflow
 
-An automated GitHub Actions pipeline (`.github/workflows/container-daily-update.yml`) runs daily at 03:00 UTC to:
-1. Sourcing the latest Chainguard Python zero-vulnerability base image.
-2. Building and scanning the container image with **Trivy** (`CRITICAL,HIGH` severity gates).
-3. Pushing updated images to GitHub Container Registry (`ghcr.io/jsoehner/gh-helper-agent:latest`).
-4. Running automated maintenance across all target repositories.
+Automated GitHub Actions pipelines decouple container builds and security testing into separate, non-sequential workflows:
+1. **Dependency Update Pipeline** (`.github/workflows/dependency-update.yml`): Runs daily at 03:00 UTC to build, tag, and publish updated Chainguard Python containers to GHCR (`ghcr.io/jsoehner/gh-helper-agent:latest`).
+2. **Security Testing Pipeline** (`.github/workflows/security-testing.yml`): Runs daily at 04:00 UTC and on PRs to perform non-blocking **Trivy** container vulnerability scanning (`CRITICAL,HIGH` severity gates) and **Semgrep** SAST code scanning.
 
 
 ## 🛠️ Usage
@@ -95,9 +93,11 @@ This repository includes:
 For a complete reference of operational constraints and edge cases, see the full [Troubleshooting & Gotchas Guide](docs/TROUBLESHOOTING.md).
 
 ### Latest Gotchas & Highlights:
-- **[Gotcha 19: Distroless Container Debugging Limits](docs/TROUBLESHOOTING.md#gotcha-19)**: Chainguard minimal Python images (`cgr.dev/chainguard/python`) omit shells (`sh`/`bash`) and package managers; use multi-stage build targets or ephemeral debug containers for shell inspection.
-- **[Gotcha 20: Environment File Volume vs Variable Mounts](docs/TROUBLESHOOTING.md#gotcha-20)**: `--env-file .env` injects credentials into container environment variables without mounting sensitive file system paths into non-root containers.
 - **[Gotcha 21: Unmergeable PR Handling & Diagnostic Commenting](docs/TROUBLESHOOTING.md#gotcha-21)**: PRs that fail auto-merge return HTTP 405/422 due to failing CI checks or git merge conflicts. The agent posts diagnostic comments on PR issue endpoints and tracks items for maintainer rebase or automated cleanup.
+- **[Gotcha 22: Decoupled Workflow Execution Boundaries](docs/TROUBLESHOOTING.md#gotcha-22)**: Splitting monolithic CI pipelines into separate workflows (`dependency-update.yml` vs `security-testing.yml`) ensures container publishing pipelines run independently of vulnerability and SAST scanning.
+- **[Gotcha 23: Node 24 GitHub Actions Deprecation Warning](docs/TROUBLESHOOTING.md#gotcha-23)**: Bumping actions to Node 24 compatible major versions (`checkout@v7`, `build-push-action@v7`, `metadata-action@v6`) prevents runtime deprecation warnings.
+- **[Gotcha 24: Immutable 40-Character Commit SHA Action Pinning](docs/TROUBLESHOOTING.md#gotcha-24)**: Using mutable action tags (e.g. `@v4`) introduces supply-chain vulnerabilities; all action steps must be explicitly pinned to 40-character commit SHAs.
+- **[Gotcha 25: Gitleaks Action Strict Input Validation](docs/TROUBLESHOOTING.md#gotcha-25)**: `gitleaks/gitleaks-action@v3` rejects `with: args:`; omitting `args` allows default automated scanning.
 
 
 
