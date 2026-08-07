@@ -50,6 +50,7 @@ Key functions:
 | 2026-08-07 | Automation | Created daily container rebuild & vulnerability scan workflow (`.github/workflows/container-daily-update.yml`) & ADR-0008 (`docs/adr/0008-daily-container-rebuild-and-vulnerability-scanning-workflow.md`). |
 | 2026-08-07 | Architecture | Documented host Docker socket mounting & created ADR-0009 (`docs/adr/0009-container-host-socket-mount-and-socket-activation-handling.md`). |
 | 2026-08-07 | Workflow | Implemented unmergeable PR management workflow with diagnostic PR commenting, local rebase/conflict resolution hooks, and status tracking in `github_helper_agent.py`. |
+| 2026-08-07 | Documentation | Refactored Gotchas into dedicated `docs/TROUBLESHOOTING.md` guide; updated `README.md` with links to the latest recent gotchas (18-21). |
 
 ---
 
