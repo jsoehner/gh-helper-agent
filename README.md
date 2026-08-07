@@ -112,6 +112,7 @@ This repository includes:
 18. **Socket Activation Permission Boundaries**: Accessing `/run/docker.sock` from inside a non-root container requires matching socket group permissions (`root:docker`, mode `0660`). If the container user lacks access, commands fail with socket connection or permission denied errors.
 19. **Distroless Container Debugging Limits**: Chainguard minimal Python images (`cgr.dev/chainguard/python`) do not contain a shell (`sh`/`bash`) or package manager (`apk`/`apt`). To debug container state interactively, multi-stage dev targets or ephemeral debug containers must be used.
 20. **Environment File Volume vs Variable Mounts**: When passing secrets via `.env` in containerized environments, `--env-file .env` injects key-value pairs into environment variables without exposing file system paths, avoiding file permission issues inside non-root containers.
+21. **Unmergeable PR Handling & Diagnostic Commenting**: When Dependabot, badge updates, or manual PRs cannot be auto-merged due to failing CI checks or git merge conflicts, direct merge requests return HTTP 405/422. Handling unmergeable PRs requires posting diagnostic comments on the PR issue endpoint, logging status warnings, and tracking items for manual rebase or automated cleanup.
 
 
 

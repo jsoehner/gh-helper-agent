@@ -49,6 +49,7 @@ Key functions:
 | 2026-08-07 | Containerization | Created Dockerfile using Chainguard Python base image & ADR-0007 (`docs/adr/0007-containerization-via-chainguard-minimal-python-base-image.md`). |
 | 2026-08-07 | Automation | Created daily container rebuild & vulnerability scan workflow (`.github/workflows/container-daily-update.yml`) & ADR-0008 (`docs/adr/0008-daily-container-rebuild-and-vulnerability-scanning-workflow.md`). |
 | 2026-08-07 | Architecture | Documented host Docker socket mounting & created ADR-0009 (`docs/adr/0009-container-host-socket-mount-and-socket-activation-handling.md`). |
+| 2026-08-07 | Workflow | Implemented unmergeable PR management workflow with diagnostic PR commenting, local rebase/conflict resolution hooks, and status tracking in `github_helper_agent.py`. |
 
 ---
 

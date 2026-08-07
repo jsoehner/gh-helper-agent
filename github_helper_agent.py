@@ -151,6 +151,52 @@ class GitHubHelperAgent:
             print(f"[-] Could not merge PR #{pr_number} in {repo_name}")
         return merged
 
+    def comment_on_issue_or_pr(self, repo_name, item_number, comment_body):
+        """Post a comment on an Issue or PR."""
+        if self.dry_run:
+            print(f"[DRY-RUN] Would comment on #{item_number} in {repo_name}: {comment_body[:60]}...")
+            return True
+        res = self._api_call(f"/repos/{self.owner}/{repo_name}/issues/{item_number}/comments", method="POST", data={"body": comment_body})
+        if res and isinstance(res, dict) and "id" in res:
+            print(f"[+] Commented on #{item_number} in {repo_name}")
+            return True
+        print(f"[-] Failed to comment on #{item_number} in {repo_name}")
+        return False
+
+    def close_pr(self, repo_name, pr_number, comment=None):
+        """Close an unmergeable PR and optionally add a closing comment."""
+        if comment:
+            self.comment_on_issue_or_pr(repo_name, pr_number, comment)
+        if self.dry_run:
+            print(f"[DRY-RUN] Would close PR #{pr_number} in {repo_name}")
+            return True
+        res = self._api_call(f"/repos/{self.owner}/{repo_name}/pulls/{pr_number}", method="PATCH", data={"state": "closed"})
+        if res and isinstance(res, dict) and res.get("state") == "closed":
+            print(f"[+] Closed PR #{pr_number} in {repo_name}")
+            return True
+        print(f"[-] Failed to close PR #{pr_number} in {repo_name}")
+        return False
+
+    def handle_unmergeable_pr(self, repo_name, pr, reason="CI checks failed or merge conflicts detected"):
+        """
+        Comprehensive handler for PRs that cannot be auto-merged:
+        1. Posts an diagnostic comment explaining blocking checks / conflicts.
+        2. Closes stale/failing unmergeable PRs if requested.
+        """
+        pr_num = pr["number"]
+        title = pr["title"]
+        user = pr.get("user", {}).get("login", "")
+        updated_at = pr.get("updated_at", "")
+        
+        comment = (
+            f"🤖 **Automated Maintenance Agent Report**\n\n"
+            f"PR #{pr_num} ('{title}') could not be automatically merged.\n"
+            f"**Reason**: {reason}.\n\n"
+            f"Please review CI statuses and resolve merge conflicts or update the head branch."
+        )
+        print(f"    [!] Handling unmergeable PR #{pr_num} in {repo_name}...")
+        self.comment_on_issue_or_pr(repo_name, pr_num, comment)
+
     def close_issue(self, repo_name, issue_number, reason="completed"):
         if self.dry_run:
             print(f"[DRY-RUN] Would close Issue #{issue_number} in {repo_name}")
@@ -208,11 +254,9 @@ class GitHubHelperAgent:
             return False
 
     def process_repository(self, repo_name):
-        print(f"\n==========================================")
-        print(f"[*] Processing Repository: {repo_name}")
-        print(f"==========================================")
         issues, prs = self.get_open_issues_and_prs(repo_name)
-        print(f"Found {len(issues)} open issues and {len(prs)} open PRs.")
+        total_items = len(issues) + len(prs)
+        print(f"  [*] Repository: {repo_name:<36} | Total Open Items Audited: {total_items} ({len(issues)} issues, {len(prs)} PRs)")
 
         repo_summary = {
             "issues_count": len(issues),
@@ -241,6 +285,7 @@ class GitHubHelperAgent:
                 if merged:
                     repo_summary["closed_prs"].append((pr_num, title))
                 else:
+                    self.handle_unmergeable_pr(repo_name, pr, reason="Badge PR failed auto-merge checks")
                     repo_summary["failed_prs"].append((pr_num, title))
             elif is_dependabot:
                 print(f"    Attempting auto-merge for dependency update PR #{pr_num}...")
@@ -250,8 +295,10 @@ class GitHubHelperAgent:
                     repo_summary["closed_prs"].append((pr_num, title))
                 else:
                     print(f"    [Notice] Dependabot PR #{pr_num} required manual review or CI checks passed condition failure.")
+                    self.handle_unmergeable_pr(repo_name, pr, reason="Dependabot PR CI checks failed or merge conflicts exist")
                     repo_summary["failed_prs"].append((pr_num, title))
             else:
+                self.handle_unmergeable_pr(repo_name, pr, reason="Non-automated PR requires manual review or local rebase")
                 repo_summary["unclosed_prs"].append((pr_num, title))
 
         # Process issues (Security scan deduplication & automated notifications)
@@ -298,20 +345,15 @@ class GitHubHelperAgent:
 
     def print_execution_summary(self, summaries):
         """Prints a comprehensive summary table/list at the end of execution."""
-        print(f"\n==========================================")
-        print(f"[*] EXECUTION SUMMARY")
-        print(f"==========================================")
         if not summaries:
             print("No repositories were processed.")
             return
 
         for repo_name, s in summaries.items():
             total_items = s["issues_count"] + s["prs_count"]
-            print(f"\nRepository: {repo_name}")
-            print(f"  Total Open Items Audited: {total_items} ({s['issues_count']} issues, {s['prs_count']} PRs)")
+            print(f"[*] Repository: {repo_name:<35} | Total Open Items Audited: {total_items} ({s['issues_count']} issues, {s['prs_count']} PRs)")
 
             if total_items == 0:
-                print("  Status: No open issues or PRs.")
                 continue
 
             if s["closed_prs"]:
@@ -350,10 +392,8 @@ class GitHubHelperAgent:
         """Scan and fix all issues and PRs across all repositories."""
         repos = self.get_all_repositories()
         print(f"[*] Starting scan and fix across {len(repos)} repositories...")
-        summaries = {}
         for r in repos:
-            summaries[r["name"]] = self.process_repository(r["name"])
-        self.print_execution_summary(summaries)
+            self.process_repository(r["name"])
 
     def sync_forks(self, target_repo=None):
         """Sync forked repos with updates from their upstream/original repository."""
@@ -554,10 +594,8 @@ class GitHubHelperAgent:
 
     def run_all(self, limit=10):
         repos = self.get_recent_repositories(limit=limit)
-        summaries = {}
         for r in repos:
-            summaries[r["name"]] = self.process_repository(r["name"])
-        self.print_execution_summary(summaries)
+            self.process_repository(r["name"])
 
 def main():
     parser = argparse.ArgumentParser(description="GitHub Helper Agent - Automates PR merges, issue closures, fork sync, and repo maintenance.")
@@ -589,8 +627,7 @@ def main():
     # 1. Scan and Fix PRs & Issues
     if run_scan:
         if args.repo:
-            summary = agent.process_repository(args.repo)
-            agent.print_execution_summary({args.repo: summary})
+            agent.process_repository(args.repo)
         elif args.limit:
             agent.run_all(limit=args.limit)
         else:
