@@ -164,12 +164,47 @@ Decoupling dependency updates and security testing allows security checks to exe
 | Security | Multi-layer scanning (Container + SAST) | jsoehner | `security-testing.yml` |
 | DevSecOps | Independent CI/CD workflow triggers | jsoehner | `dependency-update.yml` |
 
+### Residual risk
+
+- Residual risk description: Dependency updates may fail build stage if base image updates contain breaking upstream changes.
+- Residual risk owner: jsoehner
+- Risk acceptance or exception ID: N/A
+- Expiry or review date: 2027-08-07
+
+## Technical debt assessment
+
+**Debt impact:** None
+
+**Technical debt score:** 0
+
+**Assessment rationale:**
+
+No new or unmanaged technical debt introduced by this architecture decision.
+
+| Debt item | New, increased, reduced, or none | Driver | Impact | Owner | Remediation plan | Due date | Evidence |
+|---|---|---|---|---|---|---|---|
+| None | None | N/A | None | jsoehner | N/A | N/A | Code review |
+
+### Existing debt affected
+
+- None
+
+### New or changed debt
+
+- None
+
+### Net debt impact
+
+Zero net technical debt.
+
 ## 10. Governance and acceptance
 
 | Role or forum | Named person | Responsibility | Evidence | Date |
 |---|---|---|---|---|
 | ADR Owner | jsoehner | Maintains record quality and traceability | PR #11 | 2026-08-07 |
 | Decision Owner | jsoehner | Owns decision and lifecycle review | Architecture Review | 2026-08-07 |
+| Architecture reviewer | jsoehner | Reviews architecture alignment | Code Review | 2026-08-07 |
+| DevSecOps reviewer | jsoehner | Reviews workflow security & SHA pinning | Code Review | 2026-08-07 |
 
 ## 11. Traceability and evidence
 
@@ -178,7 +213,34 @@ Decoupling dependency updates and security testing allows security checks to exe
 | Requirements | `.github/workflows/dependency-update.yml` | Container build & publish workflow |
 | Security evidence | `.github/workflows/security-testing.yml` | Trivy + SAST workflow |
 
-## 12. Supersession
+## 12. Implementation plan
 
-- **Supersedes:** [ADR-2026-0008](file:///home/jsoehner/gh-helper-agent/docs/adr/0008-daily-container-rebuild-and-vulnerability-scanning-workflow.md)
-- **Superseded by:** None
+| Step | Owner | Target date | Evidence |
+|---|---|---|---|
+| Create dependency-update.yml | jsoehner | 2026-08-07 | `.github/workflows/dependency-update.yml` |
+| Create security-testing.yml | jsoehner | 2026-08-07 | `.github/workflows/security-testing.yml` |
+| Pin Action steps to 40-char SHAs | jsoehner | 2026-08-07 | Workflow diff |
+
+## 13. Validation plan
+
+| Validation activity | Validator | Evidence | Required before release? |
+|---|---|---|---|
+| Independent workflow execution | jsoehner | GitHub Actions runs | Yes |
+| SHA pinning audit | jsoehner | Commit SHA review | Yes |
+
+## 14. Supersession, review, and retirement
+
+- Supersedes: [ADR-2026-0008](file:///home/jsoehner/gh-helper-agent/docs/adr/0008-daily-container-rebuild-and-vulnerability-scanning-workflow.md)
+- Superseded by: None
+- Review triggers:
+  - Material architecture change
+  - GitHub Actions security policy changes
+
+## 15. Open questions and actions
+
+None.
+
+## 16. References
+
+- [GitHub Actions Security Hardening Guide](https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions)
+
