@@ -98,6 +98,8 @@ For a complete reference of operational constraints and edge cases, see the full
 - **[Gotcha 23: Node 24 GitHub Actions Deprecation Warning](docs/TROUBLESHOOTING.md#gotcha-23)**: Bumping actions to Node 24 compatible major versions (`checkout@v7`, `build-push-action@v7`, `metadata-action@v6`) prevents runtime deprecation warnings.
 - **[Gotcha 24: Immutable 40-Character Commit SHA Action Pinning](docs/TROUBLESHOOTING.md#gotcha-24)**: Using mutable action tags (e.g. `@v4`) introduces supply-chain vulnerabilities; all action steps must be explicitly pinned to 40-character commit SHAs.
 - **[Gotcha 25: Gitleaks Action Strict Input Validation](docs/TROUBLESHOOTING.md#gotcha-25)**: `gitleaks/gitleaks-action@v3` rejects `with: args:`; omitting `args` allows default automated scanning.
+- **[Gotcha 26: API Rate Limit Throttling & Backoff](docs/TROUBLESHOOTING.md#gotcha-26)**: Automatic retry with exponential backoff on HTTP 429/403 rate limit responses.
+- **[Gotcha 27: Build-Phase Container Unit Tests](docs/TROUBLESHOOTING.md#gotcha-27)**: Running unit tests during Docker builder phase ensures zero regressions before container push.
 
 
 

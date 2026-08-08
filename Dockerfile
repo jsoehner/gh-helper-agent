@@ -7,7 +7,11 @@ WORKDIR /app
 
 # Copy repository source files
 COPY github_helper_agent.py .
+COPY test_github_helper_agent.py .
 COPY README.md .
+
+# Run unit tests during container build phase
+RUN python -m unittest discover -s . -p "test_*.py"
 
 # Final minimal & secure runtime image (distroless nonroot)
 FROM cgr.dev/chainguard/python:latest

@@ -56,35 +56,56 @@ class GitHubHelperAgent:
                 print(f"[!] Warning: Could not read {config_path}: {e}")
         return {}
 
-    def _api_call(self, endpoint, method="GET", data=None):
+    def _api_call(self, endpoint, method="GET", data=None, retries=3):
         url = f"https://api.github.com{endpoint}"
         req = urllib.request.Request(url, headers=self.headers, method=method)
         payload = None
         if data:
             req.add_header("Content-Type", "application/json")
             payload = json.dumps(data).encode("utf-8")
-        try:
-            with urllib.request.urlopen(req, data=payload) as resp:
-                if resp.status == 204:
-                    return True
-                res_data = resp.read().decode("utf-8")
-                return json.loads(res_data) if res_data else True
-        except urllib.error.HTTPError as e:
-            err_msg = e.read().decode('utf-8', errors='ignore')
+        
+        for attempt in range(retries):
             try:
-                err_data = json.loads(err_msg)
-            except Exception:
-                err_data = {"message": err_msg}
-            if isinstance(err_data, dict):
-                err_data["_http_status"] = e.code
-                if "is not behind" not in err_msg.lower() and "archived" not in err_msg.lower():
-                    print(f"[-] HTTP {e.code} for {method} {url}: {err_msg}")
-                return err_data
-            print(f"[-] HTTP {e.code} for {method} {url}: {err_msg}")
-            return None
-        except Exception as e:
-            print(f"[-] Error calling {method} {url}: {e}")
-            return None
+                with urllib.request.urlopen(req, data=payload) as resp:
+                    # Log rate limit remaining if available
+                    remaining = resp.headers.get("X-RateLimit-Remaining")
+                    if remaining is not None and int(remaining) < 10:
+                        print(f"[!] Warning: GitHub API rate limit low: {remaining} requests remaining.")
+                    
+                    if resp.status == 204:
+                        return True
+                    res_data = resp.read().decode("utf-8")
+                    return json.loads(res_data) if res_data else True
+            except urllib.error.HTTPError as e:
+                err_msg = e.read().decode('utf-8', errors='ignore')
+                # Handle rate limiting (HTTP 429 or 403 with rate limit message)
+                if (e.code == 429 or (e.code == 403 and "rate limit" in err_msg.lower())) and attempt < retries - 1:
+                    retry_after = e.headers.get("Retry-After")
+                    reset_time = e.headers.get("X-RateLimit-Reset")
+                    wait_time = int(retry_after) if retry_after else (2 ** (attempt + 1))
+                    if reset_time and not retry_after:
+                        import time
+                        wait_time = max(1, min(int(reset_time) - int(time.time()), 60))
+                    print(f"[!] Rate limited (HTTP {e.code}). Retrying in {wait_time}s (Attempt {attempt+1}/{retries})...")
+                    import time
+                    time.sleep(wait_time)
+                    continue
+
+                try:
+                    err_data = json.loads(err_msg)
+                except Exception:
+                    err_data = {"message": err_msg}
+                if isinstance(err_data, dict):
+                    err_data["_http_status"] = e.code
+                    if "is not behind" not in err_msg.lower() and "archived" not in err_msg.lower():
+                        print(f"[-] HTTP {e.code} for {method} {url}: {err_msg}")
+                    return err_data
+                print(f"[-] HTTP {e.code} for {method} {url}: {err_msg}")
+                return None
+            except Exception as e:
+                print(f"[-] Error calling {method} {url}: {e}")
+                return None
+        return None
 
     def _fetch_paginated_api(self, endpoint):
         """Helper to retrieve all pages for list endpoints."""

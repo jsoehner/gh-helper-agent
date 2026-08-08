@@ -52,6 +52,8 @@ Key functions:
 | 2026-08-07 | Workflow | Implemented unmergeable PR management workflow with diagnostic PR commenting, local rebase/conflict resolution hooks, and status tracking in `github_helper_agent.py`. |
 | 2026-08-07 | Documentation | Refactored Gotchas into dedicated `docs/TROUBLESHOOTING.md` guide; updated `README.md` with links to the last 3 added gotchas (19-21). |
 | 2026-08-07 | Architecture | Created ADR-0011 (`docs/adr/0011-decoupled-dependency-update-and-security-testing-workflows.md`), superseding ADR-0008, to separate dependency update and security testing CI workflows with Node 24 support and explicit 40-character SHA pinning. Added Gotchas 22-25 to `docs/TROUBLESHOOTING.md` and updated `README.md`. |
+| 2026-08-08 | Architecture & Testing | Created ADR-0012 (`docs/adr/0012-resilient-api-rate-limiting-and-unit-testing-infrastructure.md`), superseding ADR-0001, implementing HTTP 429/403 rate-limiting retries with exponential backoff and `Retry-After` header parsing in `github_helper_agent.py`. Established `test_github_helper_agent.py` zero-dependency test suite integrated into `Dockerfile` build stage and `security-testing.yml`. Added Gotchas 26-27 to `docs/TROUBLESHOOTING.md` and updated `README.md`. |
+
 
 
 ---

@@ -1,7 +1,7 @@
 ---
 adr_id: "ADR-2026-0001"
 title: "Architecture & API Handling Strategy for gh-helper-agent"
-status: "Accepted"
+status: "Superseded"
 risk_tier: "Tier 1"
 control_domains:
   - Architecture
@@ -74,7 +74,8 @@ traceability:
   runbooks: []
   monitoring: []
 supersedes: []
-superseded_by: []
+superseded_by:
+  - "ADR-2026-0012"
 retention_classification: "Standard"
 legal_hold: false
 ---
@@ -83,7 +84,7 @@ legal_hold: false
 
 ## 1. Status
 
-**Current status:** Accepted
+**Current status:** Superseded by [ADR-2026-0012](file:///home/jsoehner/gh-helper-agent/docs/adr/0012-resilient-api-rate-limiting-and-unit-testing-infrastructure.md)
 
 **Lifecycle notes:**
 
@@ -92,7 +93,8 @@ legal_hold: false
 - Accepted: 2026-08-01
 - Implemented: 2026-08-01
 - Validated: 2026-08-01
-- Next review: 2027-08-01
+- Superseded: 2026-08-08 by ADR-2026-0012
+- Next review: N/A
 
 ## 2. Executive decision summary
 
