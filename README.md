@@ -92,12 +92,15 @@ This repository includes:
 
 For a complete reference of operational constraints and edge cases, see the full [Troubleshooting & Gotchas Guide](docs/TROUBLESHOOTING.md).
 
-### Latest Gotchas & Highlights:
-- **[Gotcha 21: Unmergeable PR Handling & Diagnostic Commenting](docs/TROUBLESHOOTING.md#gotcha-21)**: PRs that fail auto-merge return HTTP 405/422 due to failing CI checks or git merge conflicts. The agent posts diagnostic comments on PR issue endpoints and tracks items for maintainer rebase or automated cleanup.
-- **[Gotcha 22: Decoupled Workflow Execution Boundaries](docs/TROUBLESHOOTING.md#gotcha-22)**: Splitting monolithic CI pipelines into separate workflows (`dependency-update.yml` vs `security-testing.yml`) ensures container publishing pipelines run independently of vulnerability and SAST scanning.
-- **[Gotcha 23: Node 24 GitHub Actions Deprecation Warning](docs/TROUBLESHOOTING.md#gotcha-23)**: Bumping actions to Node 24 compatible major versions (`checkout@v7`, `build-push-action@v7`, `metadata-action@v6`) prevents runtime deprecation warnings.
-- **[Gotcha 24: Immutable 40-Character Commit SHA Action Pinning](docs/TROUBLESHOOTING.md#gotcha-24)**: Using mutable action tags (e.g. `@v4`) introduces supply-chain vulnerabilities; all action steps must be explicitly pinned to 40-character commit SHAs.
-- **[Gotcha 25: Gitleaks Action Strict Input Validation](docs/TROUBLESHOOTING.md#gotcha-25)**: `gitleaks/gitleaks-action@v3` rejects `with: args:`; omitting `args` allows default automated scanning.
+### Highlights & Gotchas Reference:
+- **[Gotcha 1-10: Core API & Permission Constraints](docs/TROUBLESHOOTING.md#gotcha-1)**: GitHub REST API issues vs PR filtering, PAT scope requirements (`repo`, `delete_repo`), rate limit thresholds, auto-merge squash requirements, and pagination.
+- **[Gotcha 11-17: Timestamps, Fork Sync & Container Mounts](docs/TROUBLESHOOTING.md#gotcha-11)**: ISO 8601 `Z` parsing, divergent local commit handling (`HTTP 409`), patch diff previews, `.env` parsing hierarchy, and host Docker socket `/run/docker.sock` volume mounting.
+- **[Gotcha 18-20: Socket Permissions & Distroless Containers](docs/TROUBLESHOOTING.md#gotcha-18)**: Container non-root socket permission boundaries, Chainguard minimal image interactive debugging limits, and secret environment volume vs variable injection.
+- **[Gotcha 21: Unmergeable PR Handling & Diagnostic Commenting](docs/TROUBLESHOOTING.md#gotcha-21)**: Diagnostic PR issue commenting and status tracking for PRs returning HTTP 405/422.
+- **[Gotcha 22: Decoupled Workflow Execution Boundaries](docs/TROUBLESHOOTING.md#gotcha-22)**: Independent scheduling for container image publishing and security/SAST scanning workflows.
+- **[Gotcha 23: Node 24 GitHub Actions Deprecation Warning](docs/TROUBLESHOOTING.md#gotcha-23)**: Node 24 runtime support via updated action versions.
+- **[Gotcha 24: Immutable 40-Character Commit SHA Action Pinning](docs/TROUBLESHOOTING.md#gotcha-24)**: Supply chain hardening via explicit commit SHA action pinning.
+- **[Gotcha 25: Gitleaks Action Strict Input Validation](docs/TROUBLESHOOTING.md#gotcha-25)**: `gitleaks/gitleaks-action@v3` parameter schema compliance.
 - **[Gotcha 26: API Rate Limit Throttling & Backoff](docs/TROUBLESHOOTING.md#gotcha-26)**: Automatic retry with exponential backoff on HTTP 429/403 rate limit responses.
 - **[Gotcha 27: Build-Phase Container Unit Tests](docs/TROUBLESHOOTING.md#gotcha-27)**: Running unit tests during Docker builder phase ensures zero regressions before container push.
 
