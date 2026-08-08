@@ -109,7 +109,7 @@ legal_hold: false
 
 ## 3. Context and problem statement
 
-Previously, [ADR-2026-0008](file:///home/jsoehner/gh-helper-agent/docs/adr/0008-daily-container-rebuild-and-vulnerability-scanning-workflow.md) established a single monolithic workflow (`container-daily-update.yml`) that executed container vulnerability scanning as a strict prerequisite step prior to building and publishing updated container images to GHCR.
+Previously, [ADR-2026-0008](file:///home/jsoehner/gh-helper-agent/docs/architecture/decisions/0008-daily-container-rebuild-and-vulnerability-scanning-workflow.md) established a single monolithic workflow (`container-daily-update.yml`) that executed container vulnerability scanning as a strict prerequisite step prior to building and publishing updated container images to GHCR.
 
 However, tightly coupling container build/push automation with security testing created several operational limitations:
 1. Security testing could not be triggered on PRs without building/pushing container artifacts.
@@ -138,7 +138,7 @@ To achieve high modularity and follow DevSecOps best practices, we required brea
 **We will:**
 1. Create `.github/workflows/dependency-update.yml` for automated container build, tag, GHCR push, and agent execution.
 2. Create `.github/workflows/security-testing.yml` containing non-sequential parallel jobs for Trivy container vulnerability scanning and Semgrep SAST code analysis.
-3. Supersede [ADR-2026-0008](file:///home/jsoehner/gh-helper-agent/docs/adr/0008-daily-container-rebuild-and-vulnerability-scanning-workflow.md) with this document (ADR-2026-0011).
+3. Supersede [ADR-2026-0008](file:///home/jsoehner/gh-helper-agent/docs/architecture/decisions/0008-daily-container-rebuild-and-vulnerability-scanning-workflow.md) with this document (ADR-2026-0011).
 4. Pin all GitHub Actions steps to explicit commit SHAs with Node 24 compatible action major versions.
 
 **We will not:** Sequentially block container dependency pushes on inline scan steps in a single job.
@@ -230,7 +230,7 @@ Zero net technical debt.
 
 ## 14. Supersession, review, and retirement
 
-- Supersedes: [ADR-2026-0008](file:///home/jsoehner/gh-helper-agent/docs/adr/0008-daily-container-rebuild-and-vulnerability-scanning-workflow.md)
+- Supersedes: [ADR-2026-0008](file:///home/jsoehner/gh-helper-agent/docs/architecture/decisions/0008-daily-container-rebuild-and-vulnerability-scanning-workflow.md)
 - Superseded by: None
 - Review triggers:
   - Material architecture change

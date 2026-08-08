@@ -103,7 +103,7 @@ legal_hold: false
 ## 2. Executive decision summary
 
 - **Decision outcome:** Upgrade `github_helper_agent.py` HTTP engine (`_api_call`) with exponential backoff, `Retry-After` / `X-RateLimit-Reset` header parsing, rate limit threshold warnings (`X-RateLimit-Remaining < 10`), and establish an automated zero-dependency unit testing suite executed during Docker builds and CI security workflows.
-- **Primary reason:** Prevent HTTP 429/403 rate-limit failures during extensive multi-repo account audits while superseding [ADR-2026-0001](file:///home/jsoehner/gh-helper-agent/docs/adr/0001-architecture-and-api-handling-strategy.md) with resilient API error handling and continuous test verification.
+- **Primary reason:** Prevent HTTP 429/403 rate-limit failures during extensive multi-repo account audits while superseding [ADR-2026-0001](file:///home/jsoehner/gh-helper-agent/docs/architecture/decisions/0001-architecture-and-api-handling-strategy.md) with resilient API error handling and continuous test verification.
 - **Key risk or trade-off:** Slight execution delay when retrying rate-limited calls (capped by backoff timeouts).
 
 ## 3. Context and problem statement
@@ -237,7 +237,7 @@ Zero net technical debt.
 
 ## 14. Supersession, review, and retirement
 
-- Supersedes: [ADR-2026-0001](file:///home/jsoehner/gh-helper-agent/docs/adr/0001-architecture-and-api-handling-strategy.md)
+- Supersedes: [ADR-2026-0001](file:///home/jsoehner/gh-helper-agent/docs/architecture/decisions/0001-architecture-and-api-handling-strategy.md)
 - Superseded by: None
 - Review triggers:
   - Material architecture change

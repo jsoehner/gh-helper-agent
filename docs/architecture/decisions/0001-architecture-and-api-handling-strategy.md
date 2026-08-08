@@ -84,7 +84,7 @@ legal_hold: false
 
 ## 1. Status
 
-**Current status:** Superseded by [ADR-2026-0012](file:///home/jsoehner/gh-helper-agent/docs/adr/0012-resilient-api-rate-limiting-and-unit-testing-infrastructure.md)
+**Current status:** Superseded by [ADR-2026-0012](file:///home/jsoehner/gh-helper-agent/docs/architecture/decisions/0012-resilient-api-rate-limiting-and-unit-testing-infrastructure.md)
 
 **Lifecycle notes:**
 
