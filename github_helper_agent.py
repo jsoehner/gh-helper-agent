@@ -33,6 +33,103 @@ def load_dotenv(dotenv_path=".env"):
 
 load_dotenv()
 
+def is_major_version_jump(vulnerable_range, target_version):
+    """
+    Detect if the upgrade from the vulnerable version range to the target version
+    involves a major semver breaking jump (e.g. 1.x -> 2.x or < 18.0.0 -> 18.2.0).
+    """
+    if not target_version or target_version == "None Available":
+        return False
+    import re
+    target_match = re.search(r'v?(\d+)\.', target_version)
+    if not target_match:
+        return False
+    target_major = int(target_match.group(1))
+
+    if not vulnerable_range:
+        return False
+
+    # Check for lower bound (e.g. ">= 1.0.0")
+    lower_matches = re.findall(r'>[=\s]*v?(\d+)\.', vulnerable_range)
+    if lower_matches:
+        lower_major = min(int(m) for m in lower_matches)
+        if target_major > lower_major:
+            return True
+
+    # Check for upper bound (e.g. "< 2.0.0" or "< 1.5.0")
+    upper_matches = re.findall(r'<[=\s]*v?(\d+)\.(\d+)(?:\.(\d+))?', vulnerable_range)
+    if upper_matches:
+        for u_maj, u_min, u_patch in upper_matches:
+            u_maj_int = int(u_maj)
+            u_min_int = int(u_min)
+            u_patch_int = int(u_patch) if u_patch else 0
+
+            # If target major is strictly greater than upper bound major (e.g. < 1.5.0 -> 2.0.0)
+            if target_major > u_maj_int:
+                return True
+            # If upper bound is a major boundary like "< 18.0.0" and target is "18.x"
+            # It means vulnerable versions were in previous major series (e.g. 17.x)
+            if target_major == u_maj_int and u_min_int == 0 and u_patch_int == 0:
+                if f"< {u_maj}.0" in vulnerable_range or f"<{u_maj}.0" in vulnerable_range or f"< v{u_maj}.0" in vulnerable_range:
+                    return True
+
+    return False
+
+def generate_ecosystem_remediation_command(ecosystem, package_name, target_version, manifest_path=None, strategy="PATCH_UPGRADE"):
+    """
+    Generate actionable ecosystem-specific CLI commands to remediate the vulnerability.
+    """
+    ecosystem = (ecosystem or "").lower()
+    manifest_path = manifest_path or ""
+    
+    if strategy == "TRANSITIVE_LOCKFILE_UPDATE":
+        if ecosystem in ["npm", "javascript", "typescript"]:
+            return "npm audit fix"
+        elif ecosystem in ["pip", "python", "pypi"]:
+            return f"pip-compile --upgrade-package {package_name} && pip install -r requirements.txt"
+        elif ecosystem in ["cargo", "rust"]:
+            return f"cargo update -p {package_name}"
+        elif ecosystem in ["gomod", "go", "golang"]:
+            return f"go get -u {package_name} && go mod tidy"
+        elif ecosystem in ["composer", "php"]:
+            return f"composer update {package_name} --with-dependencies"
+        elif ecosystem in ["maven", "gradle", "java"]:
+            return "./gradlew dependencyUpdates  # or mvn versions:use-latest-releases"
+        return f"# Refresh lockfile for {ecosystem} to update transitive dependency {package_name}"
+
+    if ecosystem in ["npm", "javascript", "typescript"]:
+        dev_flag = " --save-dev" if "dev" in manifest_path.lower() else ""
+        ver_spec = f"@{target_version}" if target_version and target_version != "None Available" else ""
+        return f"npm install {package_name}{ver_spec}{dev_flag} && npm audit"
+    elif ecosystem in ["pip", "python", "pypi"]:
+        ver_spec = f"=={target_version}" if target_version and target_version != "None Available" else ""
+        return f"pip install {package_name}{ver_spec}  # and update {manifest_path or 'requirements.txt'}"
+    elif ecosystem in ["gomod", "go", "golang"]:
+        ver_spec = f"@v{target_version}" if target_version and target_version != "None Available" else "@latest"
+        return f"go get {package_name}{ver_spec} && go mod tidy"
+    elif ecosystem in ["cargo", "rust"]:
+        if target_version and target_version != "None Available":
+            return f"cargo update -p {package_name} --precise {target_version}"
+        return f"cargo update -p {package_name}"
+    elif ecosystem in ["maven", "java"]:
+        return f"# Update <version>{target_version}</version> for {package_name} in {manifest_path or 'pom.xml'}"
+    elif ecosystem in ["gradle"]:
+        return f"# Update implementation '{package_name}:{target_version}' in {manifest_path or 'build.gradle'}"
+    elif ecosystem in ["composer", "php"]:
+        ver_spec = f":{target_version}" if target_version and target_version != "None Available" else ""
+        return f"composer require {package_name}{ver_spec}"
+    elif ecosystem in ["nuget", "csharp", "dotnet", ".net"]:
+        ver_spec = f" --version {target_version}" if target_version and target_version != "None Available" else ""
+        return f"dotnet add package {package_name}{ver_spec}"
+    elif ecosystem in ["actions", "github-actions"]:
+        return f"# Update action reference {package_name} to @v{target_version} in {manifest_path or '.github/workflows/'}"
+    elif ecosystem in ["rubygems", "ruby"]:
+        return f"bundle update {package_name}"
+    elif ecosystem in ["pub", "dart", "flutter"]:
+        return f"dart pub upgrade {package_name}"
+    else:
+        return f"# Upgrade {package_name} to {target_version} in {manifest_path or 'manifest'}"
+
 class GitHubHelperAgent:
     def __init__(self, token=None, owner=None, dry_run=False):
         self.token = token or os.environ.get("GITHUB_TOKEN")
@@ -97,7 +194,7 @@ class GitHubHelperAgent:
                     err_data = {"message": err_msg}
                 if isinstance(err_data, dict):
                     err_data["_http_status"] = e.code
-                    if "is not behind" not in err_msg.lower() and "archived" not in err_msg.lower():
+                    if "is not behind" not in err_msg.lower() and "archived" not in err_msg.lower() and "dependabot alerts are disabled" not in err_msg.lower() and "dependabot" not in err_msg.lower():
                         print(f"[-] HTTP {e.code} for {method} {url}: {err_msg}")
                     return err_data
                 print(f"[-] HTTP {e.code} for {method} {url}: {err_msg}")
@@ -276,14 +373,228 @@ class GitHubHelperAgent:
             print(f"    [Notice] Badge PR #{pr_num} could not be auto-merged.")
             return False
 
+    def get_dependabot_alerts(self, repo_name, state="open", severity=None, ecosystem=None):
+        """
+        Fetch Dependabot alerts for a repository with optional state, severity, and ecosystem filtering.
+        Gracefully handles repos where Dependabot is disabled or inaccessible.
+        """
+        endpoint = f"/repos/{self.owner}/{repo_name}/dependabot/alerts?state={state}"
+        if severity:
+            endpoint += f"&severity={severity}"
+        if ecosystem:
+            endpoint += f"&ecosystem={ecosystem}"
+        
+        alerts = self._fetch_paginated_api(endpoint)
+        if alerts is None or not isinstance(alerts, list):
+            return []
+        return alerts
+
+    def determine_alert_remediation(self, alert, open_prs=None):
+        """
+        Assess an individual Dependabot security alert and determine the best method of fixing it.
+        Returns a structured remediation recommendation dictionary.
+        """
+        alert_num = alert.get("number")
+        html_url = alert.get("html_url", "")
+        
+        # Dependency details
+        dep = alert.get("dependency", {})
+        pkg = dep.get("package", {})
+        pkg_name = pkg.get("name", "unknown")
+        ecosystem = pkg.get("ecosystem", "unknown")
+        manifest_path = dep.get("manifest_path", "")
+        scope = dep.get("scope", "runtime")
+
+        # Security advisory & vulnerability details
+        advisory = alert.get("security_advisory", {})
+        ghsa_id = advisory.get("ghsa_id", "")
+        cve_id = advisory.get("cve_id", "")
+        summary = advisory.get("summary", "No summary available")
+        severity = (advisory.get("severity") or alert.get("security_vulnerability", {}).get("severity") or "unknown").lower()
+        cvss = advisory.get("cvss", {})
+        cvss_score = cvss.get("score") if isinstance(cvss, dict) else None
+
+        vuln = alert.get("security_vulnerability", {})
+        vulnerable_range = vuln.get("vulnerable_version_range", "")
+        first_patched = vuln.get("first_patched_version") or {}
+        patched_version = first_patched.get("identifier") if isinstance(first_patched, dict) else None
+
+        # 1. Check if an existing open PR addresses this package
+        associated_pr = None
+        if open_prs:
+            for pr in open_prs:
+                pr_title = pr.get("title", "").lower()
+                pr_branch = pr.get("head", {}).get("ref", "").lower()
+                pkg_clean = pkg_name.lower()
+                if (pkg_clean in pr_title or pkg_clean in pr_branch) and ("bump" in pr_title or "update" in pr_title or "dependabot" in pr.get("user", {}).get("login", "").lower()):
+                    associated_pr = pr
+                    break
+
+        # 2. Determine Strategy
+        if associated_pr:
+            strategy = "MERGE_DEPENDABOT_PR"
+            pr_num = associated_pr.get("number")
+            pr_title = associated_pr.get("title")
+            target_version = patched_version or "N/A"
+            action = f"Dependabot Pull Request #{pr_num} ('{pr_title}') is open. Review CI checks and squash-merge the PR."
+            command = f"Agent auto-merge PR #{pr_num} or `gh pr merge {pr_num} --squash`"
+        elif patched_version:
+            target_version = patched_version
+            lockfile_extensions = [".lock", "package-lock.json", "yarn.lock", "pnpm-lock.yaml", "poetry.lock", "cargo.lock", "go.sum", "composer.lock"]
+            is_lockfile = any(manifest_path.lower().endswith(ext) for ext in lockfile_extensions)
+            
+            if is_lockfile:
+                strategy = "TRANSITIVE_LOCKFILE_UPDATE"
+                action = f"Vulnerability resides in transitive lockfile ({manifest_path}). Refresh lockfile to pull patched version {target_version}."
+                command = generate_ecosystem_remediation_command(ecosystem, pkg_name, target_version, manifest_path, strategy)
+            elif is_major_version_jump(vulnerable_range, target_version):
+                strategy = "MAJOR_UPGRADE"
+                action = f"Major version upgrade required to {target_version} ({vulnerable_range} -> {target_version}). Review changelog for breaking changes and update codebase."
+                command = generate_ecosystem_remediation_command(ecosystem, pkg_name, target_version, manifest_path, strategy)
+            else:
+                strategy = "PATCH_UPGRADE"
+                action = f"Direct non-breaking patch/minor upgrade available ({vulnerable_range} -> {target_version}). Update manifest and lockfile."
+                command = generate_ecosystem_remediation_command(ecosystem, pkg_name, target_version, manifest_path, strategy)
+        else:
+            target_version = "None Available"
+            if scope == "development":
+                strategy = "DEV_DEPENDENCY_RISK_ACCEPTANCE"
+                action = f"Development-only dependency with no official patch available. Verify test-only isolation or evaluate dismissal (reason: tolerable_risk/not_used)."
+                command = "# Verify development tool isolation; dismiss via API if risk is acceptable"
+            else:
+                strategy = "WORKAROUND_OR_MITIGATION"
+                action = f"No patched version currently released (zero-day/unpatched). Apply input validation/sanitization, disable vulnerable sub-modules, or replace {pkg_name}."
+                command = f"# Review advisory {ghsa_id or cve_id} workarounds and evaluate replacement libraries"
+
+        return {
+            "number": alert_num,
+            "package_name": pkg_name,
+            "ecosystem": ecosystem,
+            "manifest_path": manifest_path,
+            "scope": scope,
+            "severity": severity,
+            "cvss_score": cvss_score,
+            "ghsa_id": ghsa_id,
+            "cve_id": cve_id,
+            "summary": summary,
+            "vulnerable_range": vulnerable_range,
+            "target_version": target_version,
+            "strategy": strategy,
+            "recommended_action": action,
+            "command": command,
+            "associated_pr": associated_pr.get("number") if associated_pr else None,
+            "html_url": html_url
+        }
+
+    def assess_dependabot_alerts(self, repo_name, open_prs=None, severity=None, ecosystem=None, verbose=True):
+        """
+        Audit and review all open Dependabot alerts for a repository and determine best remediation methods.
+        """
+        raw_alerts = self.get_dependabot_alerts(repo_name, state="open", severity=severity, ecosystem=ecosystem)
+        if not raw_alerts:
+            if verbose:
+                print(f"    [+] No open Dependabot security alerts found for {repo_name}.")
+            return {
+                "total": 0,
+                "critical": 0,
+                "high": 0,
+                "medium": 0,
+                "low": 0,
+                "alerts": []
+            }
+
+        assessed = []
+        counts = {"critical": 0, "high": 0, "medium": 0, "low": 0, "unknown": 0}
+
+        for alert in raw_alerts:
+            rem = self.determine_alert_remediation(alert, open_prs=open_prs)
+            assessed.append(rem)
+            sev = rem.get("severity", "unknown").lower()
+            counts[sev] = counts.get(sev, 0) + 1
+
+        if verbose:
+            print(f"\n    [🛡️] Dependabot Security Alerts Review for {repo_name}:")
+            print(f"        Total Open Alerts: {len(assessed)} | Critical: {counts['critical']}, High: {counts['high']}, Medium: {counts['medium']}, Low: {counts['low']}")
+            print(f"        " + "-" * 72)
+            for idx, a in enumerate(assessed, 1):
+                sev_tag = a['severity'].upper()
+                id_str = f"{a['ghsa_id']}" + (f" / {a['cve_id']}" if a['cve_id'] else "")
+                cvss_str = f" [CVSS: {a['cvss_score']}]" if a['cvss_score'] is not None else ""
+                print(f"        [{idx}] Alert #{a['number']} [{sev_tag}] {a['package_name']} ({a['ecosystem']}) in `{a['manifest_path']}`")
+                print(f"            Advisory: {a['summary']} ({id_str}){cvss_str}")
+                print(f"            Scope: {a['scope']} | Vulnerable: {a['vulnerable_range']} -> Target: {a['target_version']}")
+                print(f"            Strategy: {a['strategy']}")
+                print(f"            Action: {a['recommended_action']}")
+                print(f"            Fix Command: {a['command']}")
+                if a.get("associated_pr"):
+                    print(f"            Linked Open PR: #{a['associated_pr']}")
+                print()
+
+        return {
+            "total": len(assessed),
+            "critical": counts["critical"],
+            "high": counts["high"],
+            "medium": counts["medium"],
+            "low": counts["low"],
+            "alerts": assessed
+        }
+
+    def dismiss_dependabot_alert(self, repo_name, alert_number, reason="tolerable_risk", comment=""):
+        """
+        Dismiss a Dependabot alert via the GitHub API with a specified reason.
+        Reasons: 'fix_started', 'inaccurate', 'no_bandwidth', 'not_used', 'tolerable_risk'
+        """
+        valid_reasons = ["fix_started", "inaccurate", "no_bandwidth", "not_used", "tolerable_risk"]
+        if reason not in valid_reasons:
+            print(f"[-] Invalid dismissal reason '{reason}'. Must be one of {valid_reasons}")
+            return False
+
+        if self.dry_run:
+            print(f"[DRY-RUN] Would dismiss Dependabot alert #{alert_number} in {repo_name} (Reason: {reason})")
+            return True
+
+        res = self._api_call(
+            f"/repos/{self.owner}/{repo_name}/dependabot/alerts/{alert_number}",
+            method="PATCH",
+            data={"state": "dismissed", "dismissed_reason": reason, "dismissed_comment": comment}
+        )
+        if res and isinstance(res, dict) and res.get("state") == "dismissed":
+            print(f"[+] Successfully dismissed Dependabot alert #{alert_number} in {repo_name}")
+            return True
+        print(f"[-] Failed to dismiss Dependabot alert #{alert_number} in {repo_name}")
+        return False
+
+    def check_all_dependabot_alerts(self, severity=None, ecosystem=None, target_repo=None):
+        """
+        Assess and review Dependabot alerts across all or targeted repositories.
+        """
+        if target_repo:
+            repos = [{"name": target_repo}]
+        else:
+            repos = self.get_all_repositories(verbose=False)
+
+        print(f"[*] Auditing Dependabot security alerts across {len(repos)} repository/repositories...")
+        summaries = {}
+        for r in repos:
+            repo_name = r["name"]
+            _, prs = self.get_open_issues_and_prs(repo_name)
+            res = self.assess_dependabot_alerts(repo_name, open_prs=prs, severity=severity, ecosystem=ecosystem, verbose=True)
+            summaries[repo_name] = res
+        return summaries
+
     def process_repository(self, repo_name):
         issues, prs = self.get_open_issues_and_prs(repo_name)
         total_items = len(issues) + len(prs)
         print(f"  [*] Repository: {repo_name:<44} | Total Open Items Audited: {total_items} ({len(issues)} issues, {len(prs)} PRs)")
 
+        # Assess Dependabot security alerts
+        alerts_summary = self.assess_dependabot_alerts(repo_name, open_prs=prs, verbose=True)
+
         repo_summary = {
             "issues_count": len(issues),
             "prs_count": len(prs),
+            "alerts_count": alerts_summary.get("total", 0),
+            "alerts_breakdown": alerts_summary,
             "closed_prs": [],
             "failed_prs": [],
             "unclosed_prs": [],
@@ -374,10 +685,21 @@ class GitHubHelperAgent:
 
         for repo_name, s in summaries.items():
             total_items = s["issues_count"] + s["prs_count"]
-            print(f"[*] Repository: {repo_name:<46} | Total Open Items Audited: {total_items} ({s['issues_count']} issues, {s['prs_count']} PRs)")
+            alerts_count = s.get("alerts_count", 0)
+            print(f"[*] Repository: {repo_name:<46} | Open Items: {total_items} ({s['issues_count']} issues, {s['prs_count']} PRs) | Dependabot Alerts: {alerts_count}")
 
-            if total_items == 0:
+            if total_items == 0 and alerts_count == 0:
                 continue
+
+            if alerts_count > 0:
+                ab = s.get("alerts_breakdown", {})
+                print(f"  [🛡️] Open Dependabot Alerts ({alerts_count}): Critical: {ab.get('critical', 0)}, High: {ab.get('high', 0)}, Medium: {ab.get('medium', 0)}, Low: {ab.get('low', 0)}")
+                for a in ab.get("alerts", []):
+                    strat = a.get("strategy")
+                    pkg = a.get("package_name")
+                    sev = a.get("severity", "").upper()
+                    target = a.get("target_version")
+                    print(f"      - Alert #{a.get('number')} [{sev}] {pkg} -> {strat} (Target: {target})")
 
             if s["closed_prs"]:
                 print("  [+] PRs Closed/Merged Successfully:")
@@ -413,11 +735,14 @@ class GitHubHelperAgent:
         return self._fetch_paginated_api(f"/user/repos?type=all")
 
     def scan_and_fix_all(self):
-        """Scan and fix all issues and PRs across all repositories."""
+        """Scan and fix all issues, Dependabot alerts, and PRs across all repositories."""
         repos = self.get_all_repositories()
         print(f"[*] Starting scan and fix across {len(repos)} repositories...")
+        summaries = {}
         for r in repos:
-            self.process_repository(r["name"])
+            summaries[r["name"]] = self.process_repository(r["name"])
+        self.print_execution_summary(summaries)
+        return summaries
 
     def sync_forks(self, target_repo=None):
         """Sync forked repos with updates from their upstream/original repository."""
@@ -640,16 +965,22 @@ class GitHubHelperAgent:
 
     def run_all(self, limit=10):
         repos = self.get_recent_repositories(limit=limit)
+        summaries = {}
         for r in repos:
-            self.process_repository(r["name"])
+            summaries[r["name"]] = self.process_repository(r["name"])
+        self.print_execution_summary(summaries)
+        return summaries
 
 def main():
-    parser = argparse.ArgumentParser(description="GitHub Helper Agent - Automates PR merges, issue closures, fork sync, and repo maintenance.")
+    parser = argparse.ArgumentParser(description="GitHub Helper Agent - Automates PR merges, issue closures, Dependabot alert assessments, fork sync, and repo maintenance.")
     parser.add_argument("--owner", default=os.environ.get("GITHUB_OWNER", "jsoehner"), help="GitHub repository owner/username")
     parser.add_argument("--repo", help="Target a specific repository by name")
     parser.add_argument("--limit", type=int, default=None, help="Limit number of repositories to process")
-    parser.add_argument("--all", action="store_true", help="Run ALL maintenance tasks across all repositories")
-    parser.add_argument("--scan-and-fix-all", action="store_true", help="Scan and fix all issues and PRs across repositories")
+    parser.add_argument("--all", action="store_true", help="Run ALL maintenance tasks across all repositories (Dependabot alert assessment & review, PR auto-merges, issue closures, fork sync, stale checks)")
+    parser.add_argument("--scan-and-fix-all", action="store_true", help="Scan and fix all issues, Dependabot alerts, and PRs across repositories")
+    parser.add_argument("--check-alerts", "--dependabot-alerts", dest="check_alerts", action="store_true", help="Assess and review Dependabot alerts across repositories")
+    parser.add_argument("--severity", help="Filter Dependabot alerts by severity (low, medium, high, critical)")
+    parser.add_argument("--ecosystem", help="Filter Dependabot alerts by ecosystem (npm, pip, gomod, cargo, maven, composer, nuget, etc.)")
     parser.add_argument("--sync-forks", action="store_true", help="Sync forked repositories with upstream changes")
     parser.add_argument("--check-stale", action="store_true", help="Identify repos inactive for >1 year and ask for confirmation before deletion/archival")
     parser.add_argument("--dry-run", action="store_true", help="Run audit without performing write actions")
@@ -661,29 +992,36 @@ def main():
     run_scan = args.scan_and_fix_all
     run_sync = args.sync_forks
     run_stale = args.check_stale
+    run_alerts = args.check_alerts
 
-    # If no specific action flag is provided, run ALL maintenance operations by default
-    if not (args.scan_and_fix_all or args.sync_forks or args.check_stale) or args.all:
+    # If no specific action flag is provided, or if --all is passed, run ALL maintenance operations by default
+    if not (args.scan_and_fix_all or args.sync_forks or args.check_stale or args.check_alerts) or args.all:
         run_scan = True
         run_sync = True
         run_stale = True
+        run_alerts = True
 
     print(f"[*] GitHub Helper Agent initialized for owner: {agent.owner} (Dry Run: {agent.dry_run})")
 
-    # 1. Scan and Fix PRs & Issues
+    # 1. Scan and Fix PRs, Issues & Dependabot Alerts
     if run_scan:
         if args.repo:
-            agent.process_repository(args.repo)
+            summary = agent.process_repository(args.repo)
+            agent.print_execution_summary({args.repo: summary})
         elif args.limit:
             agent.run_all(limit=args.limit)
         else:
             agent.scan_and_fix_all()
 
-    # 2. Sync Forked Repositories
+    # 2. Standalone Dependabot Alerts Review (if requested without scan-and-fix-all)
+    elif run_alerts:
+        agent.check_all_dependabot_alerts(severity=args.severity, ecosystem=args.ecosystem, target_repo=args.repo)
+
+    # 3. Sync Forked Repositories
     if run_sync:
         agent.sync_forks(target_repo=args.repo)
 
-    # 3. Check for Stale Repositories
+    # 4. Check for Stale Repositories
     if run_stale:
         agent.identify_and_manage_stale_repos()
 

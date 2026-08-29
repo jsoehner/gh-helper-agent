@@ -32,6 +32,13 @@ Key functions:
 4. **Safety & Execution Controls**:
    - Always verify changes with `--dry-run` flag before executing write mutations in production environments.
 
+5. **Dependabot Security Alerts API & Strategy Classification (Gotcha 28)**:
+   - Accessing `/repos/{owner}/{repo}/dependabot/alerts` requires `security_events` or `repo` token scope.
+   - Handle repositories with disabled alerts gracefully: When the API returns HTTP 404/403 with `"Dependabot alerts are disabled"`, suppress noisy error output and fall back to an empty list.
+   - Semver boundary semantics: Ranges with exact zero minor/patch upper bounds (e.g. `< 18.0.0` with target `18.2.0`) indicate that all affected versions reside in the prior major series (`<= 17.x`), requiring classification as `MAJOR_UPGRADE` rather than a minor/patch bump.
+   - Lockfile detection: Lockfiles (`package-lock.json`, `Cargo.lock`, `poetry.lock`, `go.sum`, etc.) indicate transitive dependency vulnerabilities requiring lockfile audit updates (`TRANSITIVE_LOCKFILE_UPDATE`).
+   - Default inclusion: The `--all` workflow and default execution without arguments must execute alert assessment by default to maintain exhaustive repository auditing.
+
 ---
 
 ## 📝 Change Log & Decision History
@@ -53,6 +60,8 @@ Key functions:
 | 2026-08-07 | Documentation | Refactored Gotchas into dedicated `docs/TROUBLESHOOTING.md` guide; updated `README.md` with links to the last 3 added gotchas (19-21). |
 | 2026-08-07 | Architecture | Created ADR-0011 (`docs/architecture/decisions/0011-decoupled-dependency-update-and-security-testing-workflows.md`), superseding ADR-0008, to separate dependency update and security testing CI workflows with Node 24 support and explicit 40-character SHA pinning. Added Gotchas 22-25 to `docs/TROUBLESHOOTING.md` and updated `README.md`. |
 | 2026-08-08 | Architecture & Testing | Created ADR-0012 (`docs/architecture/decisions/0012-resilient-api-rate-limiting-and-unit-testing-infrastructure.md`), superseding ADR-0001, implementing HTTP 429/403 rate-limiting retries with exponential backoff and `Retry-After` header parsing in `github_helper_agent.py`. Established `test_github_helper_agent.py` zero-dependency test suite integrated into `Dockerfile` build stage and `security-testing.yml`. Added Gotchas 26-27 to `docs/TROUBLESHOOTING.md` and updated `README.md`. |
+| 2026-08-29 | Security & Architecture | Created ADR-0013 (`docs/architecture/decisions/0013-dependabot-alerts-assessment-and-remediation-strategy.md`) implementing Dependabot alerts querying, 6-tier strategy classification (`MERGE_DEPENDABOT_PR`, `PATCH_UPGRADE`, `MAJOR_UPGRADE`, `TRANSITIVE_LOCKFILE_UPDATE`, `WORKAROUND_OR_MITIGATION`, `DEV_DEPENDENCY_RISK_ACCEPTANCE`), ecosystem-specific fix command generation, and alert dismissal API. Added Gotcha 28 to `docs/TROUBLESHOOTING.md` and expanded `test_github_helper_agent.py`. |
+
 
 
 

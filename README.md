@@ -7,6 +7,7 @@ An automated maintenance and remediation agent for GitHub repositories.
 ## 🚀 Features
 
 - **Automated Repository Audit**: Analyzes your most active repositories sorted by recent updates.
+- **Dependabot Alert Assessment & Remediation**: Audits open Dependabot security advisories across repositories, classifies them into 6 remediation strategies (`MERGE_DEPENDABOT_PR`, `PATCH_UPGRADE`, `MAJOR_UPGRADE`, `TRANSITIVE_LOCKFILE_UPDATE`, `WORKAROUND_OR_MITIGATION`, `DEV_DEPENDENCY_RISK_ACCEPTANCE`), and outputs ecosystem-tailored CLI commands (`--check-alerts`).
 - **Scan & Fix All Repositories**: Automatically iterates through all repositories to resolve open issues, Dependabot PRs, and security alerts (`--scan-and-fix-all`).
 - **Fork Synchronization**: Syncs forked repositories with merged updates from their original upstream repositories (`--sync-forks`).
 - **Stale Repository Cleanup**: Identifies repositories inactive for >1 year and prompts for confirmation before deletion (`--check-stale`).
@@ -66,6 +67,18 @@ Automated GitHub Actions pipelines decouple container builds and security testin
 python3 github_helper_agent.py --owner jsoehner --dry-run --scan-and-fix-all --sync-forks --check-stale
 ```
 
+### Assess & Review Dependabot Alerts Across Repositories
+```bash
+# Audit all open Dependabot alerts across account
+python3 github_helper_agent.py --owner jsoehner --check-alerts
+
+# Filter alerts by severity and ecosystem
+python3 github_helper_agent.py --owner jsoehner --check-alerts --severity critical --ecosystem npm
+
+# Audit alerts for a specific repository
+python3 github_helper_agent.py --owner jsoehner --repo my-app --check-alerts
+```
+
 ### Scan and Fix All Repositories
 ```bash
 python3 github_helper_agent.py --owner jsoehner --scan-and-fix-all
@@ -103,6 +116,7 @@ For a complete reference of operational constraints and edge cases, see the full
 - **[Gotcha 25: Gitleaks Action Strict Input Validation](docs/TROUBLESHOOTING.md#gotcha-25)**: `gitleaks/gitleaks-action@v3` parameter schema compliance.
 - **[Gotcha 26: API Rate Limit Throttling & Backoff](docs/TROUBLESHOOTING.md#gotcha-26)**: Automatic retry with exponential backoff on HTTP 429/403 rate limit responses.
 - **[Gotcha 27: Build-Phase Container Unit Tests](docs/TROUBLESHOOTING.md#gotcha-27)**: Running unit tests during Docker builder phase ensures zero regressions before container push.
+- **[Gotcha 28: Dependabot Security Alerts API & Strategy Classification](docs/TROUBLESHOOTING.md#gotcha-28)**: Dependabot alerts API querying, semver jump classification, and ecosystem-specific remediation planning.
 
 
 
