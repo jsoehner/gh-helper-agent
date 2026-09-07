@@ -61,7 +61,7 @@ Key functions:
 | 2026-08-07 | Architecture | Created ADR-0011 (`docs/architecture/decisions/0011-decoupled-dependency-update-and-security-testing-workflows.md`), superseding ADR-0008, to separate dependency update and security testing CI workflows with Node 24 support and explicit 40-character SHA pinning. Added Gotchas 22-25 to `docs/TROUBLESHOOTING.md` and updated `README.md`. |
 | 2026-08-08 | Architecture & Testing | Created ADR-0012 (`docs/architecture/decisions/0012-resilient-api-rate-limiting-and-unit-testing-infrastructure.md`), superseding ADR-0001, implementing HTTP 429/403 rate-limiting retries with exponential backoff and `Retry-After` header parsing in `github_helper_agent.py`. Established `test_github_helper_agent.py` zero-dependency test suite integrated into `Dockerfile` build stage and `security-testing.yml`. Added Gotchas 26-27 to `docs/TROUBLESHOOTING.md` and updated `README.md`. |
 | 2026-08-29 | Security & Architecture | Created ADR-0013 (`docs/architecture/decisions/0013-dependabot-alerts-assessment-and-remediation-strategy.md`) implementing Dependabot alerts querying, 6-tier strategy classification (`MERGE_DEPENDABOT_PR`, `PATCH_UPGRADE`, `MAJOR_UPGRADE`, `TRANSITIVE_LOCKFILE_UPDATE`, `WORKAROUND_OR_MITIGATION`, `DEV_DEPENDENCY_RISK_ACCEPTANCE`), ecosystem-specific fix command generation, and alert dismissal API. Added Gotcha 28 to `docs/TROUBLESHOOTING.md` and expanded `test_github_helper_agent.py`. |
-
+| 2026-09-07 | Security & CI/CD | Conducted Security Pipeline Orchestration audit (`docs/security-pipeline-audit.md`), enforced top-level `permissions: read-all` across workflows, added Gitleaks secrets detection job to `security-testing.yml`, and locked down unit test job permissions. |
 
 
 
