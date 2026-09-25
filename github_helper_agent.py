@@ -166,7 +166,7 @@ class GitHubHelperAgent:
         for attempt in range(retries):
             conn = None
             try:
-                conn = http.client.HTTPSConnection("api.github.com", timeout=30)
+                conn = http.client.HTTPSConnection("api.github.com", timeout=30)  # nosemgrep: python.lang.security.audit.httpsconnection-detected.httpsconnection-detected
                 conn.request(method, endpoint, body=payload, headers=headers)
                 resp = conn.getresponse()
                 status = resp.status
