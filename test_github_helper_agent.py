@@ -290,6 +290,55 @@ class TestGitHubHelperAgent(unittest.TestCase):
         res_valid = self.agent.dismiss_dependabot_alert("test_repo", 1, reason="tolerable_risk")
         self.assertTrue(res_valid)
 
+    @patch.object(GitHubHelperAgent, "merge_pr")
+    @patch.object(GitHubHelperAgent, "check_pr_ci_status")
+    def test_resolve_dependabot_alerts_auto_merge_success(self, mock_check_ci, mock_merge_pr):
+        mock_check_ci.return_value = True
+        mock_merge_pr.return_value = True
+
+        assessed_alerts = [
+            {
+                "number": 1,
+                "package_name": "lodash",
+                "strategy": "MERGE_DEPENDABOT_PR",
+                "associated_pr": 42
+            }
+        ]
+        open_prs = [
+            {"number": 42, "title": "Bump lodash", "head": {"sha": "abc1234"}}
+        ]
+
+        res = self.agent.resolve_dependabot_alerts("test_repo", assessed_alerts, open_prs=open_prs)
+        self.assertIn(1, res["resolved"])
+        self.assertEqual(len(res["closed_prs"]), 1)
+        self.assertEqual(res["closed_prs"][0], (42, "Bump lodash"))
+        mock_check_ci.assert_called_once_with("test_repo", "abc1234")
+        mock_merge_pr.assert_called_once_with("test_repo", 42, pr_ref="abc1234")
+
+    @patch.object(GitHubHelperAgent, "handle_unmergeable_pr")
+    @patch.object(GitHubHelperAgent, "check_pr_ci_status")
+    def test_resolve_dependabot_alerts_ci_failure_diagnostic(self, mock_check_ci, mock_handle_unmergeable):
+        mock_check_ci.return_value = False
+
+        assessed_alerts = [
+            {
+                "number": 2,
+                "package_name": "spotbugs-maven-plugin",
+                "strategy": "MERGE_DEPENDABOT_PR",
+                "associated_pr": 123
+            }
+        ]
+        open_prs = [
+            {"number": 123, "title": "bump spotbugs-maven-plugin", "head": {"sha": "7bf7226"}}
+        ]
+
+        res = self.agent.resolve_dependabot_alerts("test_repo", assessed_alerts, open_prs=open_prs)
+        self.assertIn(2, res["unresolved"])
+        self.assertEqual(len(res["failed_prs"]), 1)
+        self.assertEqual(res["failed_prs"][0], (123, "bump spotbugs-maven-plugin"))
+        mock_check_ci.assert_called_once_with("test_repo", "7bf7226")
+        mock_handle_unmergeable.assert_called_once()
+
     @patch.object(GitHubHelperAgent, "get_all_repositories")
     @patch.object(GitHubHelperAgent, "process_repository")
     def test_scan_and_fix_all_aggregates_summaries(self, mock_proc, mock_get_all):

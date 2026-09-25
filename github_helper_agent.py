@@ -155,6 +155,8 @@ class GitHubHelperAgent:
 
     def _api_call(self, endpoint, method="GET", data=None, retries=3):
         url = f"https://api.github.com{endpoint}"
+        if not url.startswith("https://api.github.com/"):
+            raise ValueError(f"Untrusted API endpoint: {url}")
         req = urllib.request.Request(url, headers=self.headers, method=method)
         payload = None
         if data:
@@ -163,7 +165,8 @@ class GitHubHelperAgent:
         
         for attempt in range(retries):
             try:
-                with urllib.request.urlopen(req, data=payload) as resp:
+                # Target URL is strictly constrained to https://api.github.com/ preventing custom/file schemes
+                with urllib.request.urlopen(req, data=payload) as resp:  # nosemgrep: python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected
                     # Log rate limit remaining if available
                     remaining = resp.headers.get("X-RateLimit-Remaining")
                     if remaining is not None and int(remaining) < 10:
@@ -492,8 +495,7 @@ class GitHubHelperAgent:
         """
         raw_alerts = self.get_dependabot_alerts(repo_name, state="open", severity=severity, ecosystem=ecosystem)
         if not raw_alerts:
-            if verbose:
-                print(f"    [+] No open Dependabot security alerts found for {repo_name}.")
+            # If verbose and called standalone, keep it clean or omit extra line
             return {
                 "total": 0,
                 "critical": 0,
@@ -538,6 +540,63 @@ class GitHubHelperAgent:
             "low": counts["low"],
             "alerts": assessed
         }
+
+    def resolve_dependabot_alerts(self, repo_name, assessed_alerts, open_prs=None):
+        """
+        Attempt automated resolution for assessed Dependabot alerts:
+        1. If a linked Dependabot PR is already open:
+           - Attempt to auto-merge if CI passes.
+           - If CI fails, diagnose check runs, report root cause, and request @dependabot rebase if stale.
+        2. If dev dependency risk acceptance:
+           - Option to dismiss tolerable test/dev tool risks via GitHub API.
+        """
+        if not assessed_alerts:
+            return {"resolved": [], "unresolved": [], "closed_prs": [], "failed_prs": []}
+
+        prs_by_number = {pr["number"]: pr for pr in (open_prs or [])}
+        results = {"resolved": [], "unresolved": [], "closed_prs": [], "failed_prs": []}
+
+        print(f"    [🛡️] Attempting automated resolution for {len(assessed_alerts)} open Dependabot alert(s)...")
+
+        for alert in assessed_alerts:
+            alert_num = alert.get("number")
+            pkg_name = alert.get("package_name")
+            strategy = alert.get("strategy")
+            assoc_pr_num = alert.get("associated_pr")
+
+            print(f"    -> Analyzing Alert #{alert_num}: {pkg_name} [{strategy}]")
+
+            if assoc_pr_num and assoc_pr_num in prs_by_number:
+                pr = prs_by_number[assoc_pr_num]
+                pr_title = pr.get("title", "")
+                pr_sha = pr.get("head", {}).get("sha")
+                print(f"       Linked PR #{assoc_pr_num} found for alert #{alert_num}. Evaluating mergeability & CI...")
+
+                # Check if CI is passing
+                ci_ok = self.check_pr_ci_status(repo_name, pr_sha) if pr_sha else False
+                if ci_ok:
+                    merged = self.merge_pr(repo_name, assoc_pr_num, pr_ref=pr_sha)
+                    if merged:
+                        print(f"       [+] Auto-merged PR #{assoc_pr_num}; resolved Alert #{alert_num} for {pkg_name}.")
+                        results["resolved"].append(alert_num)
+                        results["closed_prs"].append((assoc_pr_num, pr_title))
+                        continue
+                    else:
+                        print(f"       [-] Merge failed for PR #{assoc_pr_num}.")
+                        results["failed_prs"].append((assoc_pr_num, pr_title))
+                else:
+                    # Provide diagnosis for why the alert's PR is blocked
+                    print(f"       [!] PR #{assoc_pr_num} CI checks failed or are pending. Alert #{alert_num} remains open.")
+                    reason = f"Security update PR #{assoc_pr_num} for {pkg_name} blocked by failing/pending CI checks"
+                    self.handle_unmergeable_pr(repo_name, pr, reason=reason)
+                    results["failed_prs"].append((assoc_pr_num, pr_title))
+
+            elif strategy == "DEV_DEPENDENCY_RISK_ACCEPTANCE":
+                print(f"       [Info] Alert #{alert_num} is scoped to development tools with no patch available.")
+
+            results["unresolved"].append(alert_num)
+
+        return results
 
     def dismiss_dependabot_alert(self, repo_name, alert_number, reason="tolerable_risk", comment=""):
         """
@@ -584,24 +643,48 @@ class GitHubHelperAgent:
 
     def process_repository(self, repo_name):
         issues, prs = self.get_open_issues_and_prs(repo_name)
-        total_items = len(issues) + len(prs)
-        print(f"  [*] Repository: {repo_name:<44} | Total Open Items Audited: {total_items} ({len(issues)} issues, {len(prs)} PRs)")
+        # Assess Dependabot security alerts first to display full line summary cleanly
+        alerts_summary = self.assess_dependabot_alerts(repo_name, open_prs=prs, verbose=False)
+        alerts_count = alerts_summary.get("total", 0)
 
-        # Assess Dependabot security alerts
-        alerts_summary = self.assess_dependabot_alerts(repo_name, open_prs=prs, verbose=True)
+        total_items = len(issues) + len(prs)
+        print(f"  [*] Repository: {repo_name:<44} | Total Open Items Audited: {total_items} ({len(issues)} issues, {len(prs)} PRs) | Dependabot Alerts: {alerts_count}")
+
+        # If there are alerts, print the detailed review and attempt resolution
+        if alerts_count > 0:
+            print(f"    [🛡️] Open Dependabot Alerts ({alerts_count}): Critical: {alerts_summary.get('critical', 0)}, High: {alerts_summary.get('high', 0)}, Medium: {alerts_summary.get('medium', 0)}, Low: {alerts_summary.get('low', 0)}")
+            for idx, a in enumerate(alerts_summary.get("alerts", []), 1):
+                sev_tag = a['severity'].upper()
+                id_str = f"{a['ghsa_id']}" + (f" / {a['cve_id']}" if a['cve_id'] else "")
+                cvss_str = f" [CVSS: {a['cvss_score']}]" if a['cvss_score'] is not None else ""
+                print(f"        [{idx}] Alert #{a['number']} [{sev_tag}] {a['package_name']} ({a['ecosystem']}) in `{a['manifest_path']}`")
+                print(f"            Advisory: {a['summary']} ({id_str}){cvss_str}")
+                print(f"            Scope: {a['scope']} | Vulnerable: {a['vulnerable_range']} -> Target: {a['target_version']}")
+                print(f"            Strategy: {a['strategy']}")
+                print(f"            Action: {a['recommended_action']}")
+                print(f"            Fix Command: {a['command']}")
+                if a.get("associated_pr"):
+                    print(f"            Linked Open PR: #{a['associated_pr']}")
+
+            # Attempt automated resolution for alerts
+            alert_res = self.resolve_dependabot_alerts(repo_name, alerts_summary.get("alerts", []), open_prs=prs)
+        else:
+            alert_res = {"resolved": [], "unresolved": [], "closed_prs": [], "failed_prs": []}
 
         repo_summary = {
             "issues_count": len(issues),
             "prs_count": len(prs),
             "alerts_count": alerts_summary.get("total", 0),
             "alerts_breakdown": alerts_summary,
-            "closed_prs": [],
-            "failed_prs": [],
+            "closed_prs": list(alert_res.get("closed_prs", [])),
+            "failed_prs": list(alert_res.get("failed_prs", [])),
             "unclosed_prs": [],
             "closed_issues": [],
             "failed_issues": [],
             "unclosed_issues": []
         }
+
+        handled_pr_nums = {num for num, _ in repo_summary["closed_prs"]} | {num for num, _ in repo_summary["failed_prs"]}
 
         # Process PRs (Dependabot merges, badge PRs & dependency updates)
         for pr in prs:
@@ -609,6 +692,10 @@ class GitHubHelperAgent:
             title = pr["title"]
             user = pr.get("user", {}).get("login", "")
             pr_sha = pr.get("head", {}).get("sha")
+
+            if pr_num in handled_pr_nums:
+                continue
+
             print(f" -> PR #{pr_num}: {title} (Author: {user})")
             
             is_dependabot = "dependabot" in user.lower() or "bump" in title.lower()
