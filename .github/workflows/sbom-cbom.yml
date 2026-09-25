@@ -12,19 +12,19 @@ permissions:
 
 jobs:
   generate-and-verify-boms:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Create output directory
         run: mkdir -p oss
 
       - name: Set up Node.js for cdxgen
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: '20'
+          node-version: '24'
 
       - name: Install cdxgen
         run: npm install -g @cyclonedx/cdxgen
@@ -33,7 +33,7 @@ jobs:
         run: docker build -t gh-helper-agent:local .
 
       - name: Generate SBOM from Container Image
-        uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.16.1
+        uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
         with:
           image: gh-helper-agent:local
           format: spdx-json
@@ -52,7 +52,7 @@ jobs:
       # Artifact Upload
       # -------------------------------------------------------------
       - name: Upload BOM Artifacts
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.3.3
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: oss-boms
           path: oss/

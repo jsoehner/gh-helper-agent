@@ -22,7 +22,7 @@ jobs:
   # ============================================================================
   secret-scan:
     name: "Secret Leak Detection"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout Code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -41,7 +41,7 @@ jobs:
   # ============================================================================
   sast-scan:
     name: "Static Application Security Testing (SAST)"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: secret-scan
     steps:
       - name: Checkout Code
@@ -68,7 +68,7 @@ jobs:
   # ============================================================================
   dependency-scan:
     name: "Dependency & Supply Chain Vulnerability Scan"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout Code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -94,7 +94,7 @@ jobs:
   # ============================================================================
   adr-gatekeeper:
     name: "ADR Security Gatekeeper"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.event_name == 'pull_request'
     steps:
       - name: Checkout Code
@@ -103,7 +103,7 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Python
-        uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5.4.0
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.11'
 
