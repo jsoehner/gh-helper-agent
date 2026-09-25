@@ -24,29 +24,37 @@ class TestGitHubHelperAgent(unittest.TestCase):
         self.assertEqual(self.agent.headers["Authorization"], "token test_token")
         self.assertEqual(self.agent.headers["Accept"], "application/vnd.github.v3+json")
 
-    @patch("urllib.request.urlopen")
-    def test_api_call_success(self, mock_urlopen):
+    @patch("http.client.HTTPSConnection")
+    def test_api_call_success(self, mock_https_conn):
+        mock_conn = MagicMock()
         mock_resp = MagicMock()
         mock_resp.status = 200
         mock_resp.read.return_value = json.dumps({"key": "value"}).encode("utf-8")
-        mock_resp.headers = {}
-        mock_urlopen.return_value.__enter__.return_value = mock_resp
+        mock_resp.getheader.return_value = None
+        mock_conn.getresponse.return_value = mock_resp
+        mock_https_conn.return_value = mock_conn
 
         result = self.agent._api_call("/test")
         self.assertEqual(result, {"key": "value"})
 
-    @patch("urllib.request.urlopen")
-    def test_api_call_rate_limit_retry(self, mock_urlopen):
+    @patch("http.client.HTTPSConnection")
+    def test_api_call_rate_limit_retry(self, mock_https_conn):
         # First call raises HTTP 429, second succeeds
-        err_resp = io.BytesIO(b'{"message": "API rate limit exceeded"}')
-        http_err = urllib.error.HTTPError("https://api.github.com/test", 429, "Too Many Requests", {"Retry-After": "0"}, err_resp)
+        mock_conn_1 = MagicMock()
+        mock_resp_1 = MagicMock()
+        mock_resp_1.status = 429
+        mock_resp_1.read.return_value = b'{"message": "API rate limit exceeded"}'
+        mock_resp_1.getheader.side_effect = lambda h: "0" if h == "Retry-After" else None
+        mock_conn_1.getresponse.return_value = mock_resp_1
 
-        mock_resp = MagicMock()
-        mock_resp.status = 200
-        mock_resp.read.return_value = json.dumps({"status": "ok"}).encode("utf-8")
-        mock_resp.headers = {}
+        mock_conn_2 = MagicMock()
+        mock_resp_2 = MagicMock()
+        mock_resp_2.status = 200
+        mock_resp_2.read.return_value = json.dumps({"status": "ok"}).encode("utf-8")
+        mock_resp_2.getheader.return_value = None
+        mock_conn_2.getresponse.return_value = mock_resp_2
 
-        mock_urlopen.side_effect = [http_err, MagicMock(__enter__=MagicMock(return_value=mock_resp))]
+        mock_https_conn.side_effect = [mock_conn_1, mock_conn_2]
 
         result = self.agent._api_call("/test", retries=2)
         self.assertEqual(result, {"status": "ok"})

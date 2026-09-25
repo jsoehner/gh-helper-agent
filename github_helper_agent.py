@@ -9,6 +9,7 @@ deduplicates/closes automated scan reports, and applies fixes.
 import os
 import sys
 import json
+import http.client
 import urllib.request
 import urllib.parse
 import argparse
@@ -154,57 +155,62 @@ class GitHubHelperAgent:
         return {}
 
     def _api_call(self, endpoint, method="GET", data=None, retries=3):
-        url = f"https://api.github.com{endpoint}"
-        if not url.startswith("https://api.github.com/"):
-            raise ValueError(f"Untrusted API endpoint: {url}")
-        req = urllib.request.Request(url, headers=self.headers, method=method)
+        if not endpoint.startswith("/"):
+            endpoint = f"/{endpoint}"
+        headers = dict(self.headers)
         payload = None
-        if data:
-            req.add_header("Content-Type", "application/json")
+        if data is not None:
+            headers["Content-Type"] = "application/json"
             payload = json.dumps(data).encode("utf-8")
-        
+
         for attempt in range(retries):
+            conn = None
             try:
-                # Target URL is strictly constrained to https://api.github.com/ preventing custom/file schemes
-                with urllib.request.urlopen(req, data=payload) as resp:  # nosemgrep: python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected
-                    # Log rate limit remaining if available
-                    remaining = resp.headers.get("X-RateLimit-Remaining")
-                    if remaining is not None and int(remaining) < 10:
-                        print(f"[!] Warning: GitHub API rate limit low: {remaining} requests remaining.")
-                    
-                    if resp.status == 204:
-                        return True
-                    res_data = resp.read().decode("utf-8")
+                conn = http.client.HTTPSConnection("api.github.com", timeout=30)
+                conn.request(method, endpoint, body=payload, headers=headers)
+                resp = conn.getresponse()
+                status = resp.status
+                remaining = resp.getheader("X-RateLimit-Remaining")
+                if remaining is not None and int(remaining) < 10:
+                    print(f"[!] Warning: GitHub API rate limit low: {remaining} requests remaining.")
+
+                if status == 204:
+                    return True
+
+                res_data = resp.read().decode("utf-8", errors="ignore")
+                if 200 <= status < 300:
                     return json.loads(res_data) if res_data else True
-            except urllib.error.HTTPError as e:
-                err_msg = e.read().decode('utf-8', errors='ignore')
+
                 # Handle rate limiting (HTTP 429 or 403 with rate limit message)
-                if (e.code == 429 or (e.code == 403 and "rate limit" in err_msg.lower())) and attempt < retries - 1:
-                    retry_after = e.headers.get("Retry-After")
-                    reset_time = e.headers.get("X-RateLimit-Reset")
+                if (status == 429 or (status == 403 and "rate limit" in res_data.lower())) and attempt < retries - 1:
+                    retry_after = resp.getheader("Retry-After")
+                    reset_time = resp.getheader("X-RateLimit-Reset")
                     wait_time = int(retry_after) if retry_after else (2 ** (attempt + 1))
                     if reset_time and not retry_after:
                         import time
                         wait_time = max(1, min(int(reset_time) - int(time.time()), 60))
-                    print(f"[!] Rate limited (HTTP {e.code}). Retrying in {wait_time}s (Attempt {attempt+1}/{retries})...")
+                    print(f"[!] Rate limited (HTTP {status}). Retrying in {wait_time}s (Attempt {attempt+1}/{retries})...")
                     import time
                     time.sleep(wait_time)
                     continue
 
                 try:
-                    err_data = json.loads(err_msg)
+                    err_data = json.loads(res_data)
                 except Exception:
-                    err_data = {"message": err_msg}
+                    err_data = {"message": res_data}
                 if isinstance(err_data, dict):
-                    err_data["_http_status"] = e.code
-                    if "is not behind" not in err_msg.lower() and "archived" not in err_msg.lower() and "dependabot alerts are disabled" not in err_msg.lower() and "dependabot" not in err_msg.lower():
-                        print(f"[-] HTTP {e.code} for {method} {url}: {err_msg}")
+                    err_data["_http_status"] = status
+                    if "is not behind" not in res_data.lower() and "archived" not in res_data.lower() and "dependabot alerts are disabled" not in res_data.lower() and "dependabot" not in res_data.lower():
+                        print(f"[-] HTTP {status} for {method} https://api.github.com{endpoint}: {res_data}")
                     return err_data
-                print(f"[-] HTTP {e.code} for {method} {url}: {err_msg}")
+                print(f"[-] HTTP {status} for {method} https://api.github.com{endpoint}: {res_data}")
                 return None
             except Exception as e:
-                print(f"[-] Error calling {method} {url}: {e}")
+                print(f"[-] Error calling {method} https://api.github.com{endpoint}: {e}")
                 return None
+            finally:
+                if conn:
+                    conn.close()
         return None
 
     def _fetch_paginated_api(self, endpoint):
