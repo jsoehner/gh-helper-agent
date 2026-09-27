@@ -53,6 +53,7 @@ def main():
     parser.add_argument("--base", default=None, help="Base branch to compare against (e.g. origin/main)")
     parser.add_argument("--staged", action="store_true", help="Check staged files instead of commit range")
     parser.add_argument("--event", default="pull_request", help="Triggering event (pull_request, push, etc.)")
+    parser.add_argument("--actor", default=None, help="Triggering actor")
     parser.add_argument("--paths", nargs="*", default=DEFAULT_SENSITIVE_PATHS, help="List of sensitive path prefixes")
     args = parser.parse_args()
 
