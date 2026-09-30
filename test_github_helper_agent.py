@@ -36,6 +36,9 @@ class TestGitHubHelperAgent(unittest.TestCase):
 
         result = self.agent._api_call("/test")
         self.assertEqual(result, {"key": "value"})
+        mock_https_conn.assert_called_once()
+        _, kwargs = mock_https_conn.call_args
+        self.assertIsNotNone(kwargs.get("context"))
 
     @patch("http.client.HTTPSConnection")
     def test_api_call_rate_limit_retry(self, mock_https_conn):
