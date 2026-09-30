@@ -10,6 +10,7 @@ import os
 import sys
 import json
 import http.client
+import ssl
 import urllib.request
 import urllib.parse
 import argparse
@@ -166,7 +167,8 @@ class GitHubHelperAgent:
         for attempt in range(retries):
             conn = None
             try:
-                conn = http.client.HTTPSConnection("api.github.com", timeout=30)  # nosemgrep: python.lang.security.audit.httpsconnection-detected.httpsconnection-detected
+                context = ssl.create_default_context()
+                conn = http.client.HTTPSConnection("api.github.com", timeout=30, context=context)  # nosemgrep: httpsconnection-detected, python.lang.security.audit.httpsconnection-detected.httpsconnection-detected
                 conn.request(method, endpoint, body=payload, headers=headers)
                 resp = conn.getresponse()
                 status = resp.status
