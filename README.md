@@ -120,10 +120,78 @@ For a complete reference of operational constraints and edge cases, see the full
 
 
 
+## 🛡️ Automated SBOM & CBOM Supply Chain Pipeline
+
+To comply with Executive Order 14028, NIST SP 800-218 (SSDF), NIST SP 800-161 (C-SCRM), NTIA Minimum Elements, and federal Post-Quantum Cryptography (PQC) transition guidelines (CNSA 2.0 / NIST FIPS 203/204/205), this repository implements an automated, dual-engine Software and Cryptographic Bill of Materials pipeline.
+
+### Pipeline Architecture & CI Stages
+
+The continuous delivery pipeline defined in [`.github/workflows/sbom-cbom.yml`](.github/workflows/sbom-cbom.yml) executes across the following stages on every push, pull request, and release tag:
+
+1. **Dual-Format SBOM Generation**:
+   - Generates **CycloneDX 1.6** JSON (`oss/sbom.cyclonedx.json`) and **SPDX 2.3** JSON (`oss/sbom.spdx.json`) using Anchore/Syft.
+2. **CBOM Generation**:
+   - Analyzes cryptographic assets and algorithms using `cbomkit-action` to produce `oss/cbom.json`.
+3. **Dual-Engine Semantic AST Cryptographic Scan & Reconciliation**:
+   - Executes `scripts/scan_crypto_ast.py` to parse source code ASTs, inventory cryptographic library call sites, and reconcile them with the CBOM (`oss/crypto-callsites.json`).
+4. **Automated Verification & Test Harness**:
+   - Executes `scripts/test_boms.sh` to validate JSON syntax, schema structure, and ensure asset completeness. Pipelines fail if BOMs are corrupt or missing.
+5. **Post-Quantum Cryptography (PQC) Readiness Assessment**:
+   - Runs `scripts/analyze_cbom.py` to classify algorithms (classical vs. quantum-safe, e.g. ML-KEM/ML-DSA vs. RSA/ECC), generating `oss/crypto-analysis.json` and a GitHub Actions Step Summary.
+6. **Continuous Cryptographic Audit Publication**:
+   - Automatically publishes the generated audit report to [`docs/security/CRYPTOGRAPHIC_AUDIT.md`](docs/security/CRYPTOGRAPHIC_AUDIT.md).
+7. **Artifact Archival**:
+   - Archives all generated artifacts to GitHub Actions workflow storage with a 90-day retention period.
+
+### Local Script Usage
+
+All supply chain security tools are fully executable locally for developer parity and air-gapped validation:
+
+- **Generate SBOM and CBOM Artifacts**:
+  ```bash
+  # Scan filesystem directory
+  bash scripts/generate_boms.sh -t dir .
+
+  # Scan a container image
+  bash scripts/generate_boms.sh -t docker gh-helper-agent:local
+  ```
+  *(Outputs are written to the `oss/` directory, which is gitignored).*
+
+- **Run Semantic AST Cryptographic Scan**:
+  ```bash
+  python3 scripts/scan_crypto_ast.py . \
+    --cbom oss/cbom.json \
+    --output-json oss/crypto-callsites.json
+  ```
+
+- **Run BOM Verification Test Harness**:
+  ```bash
+  bash scripts/test_boms.sh oss
+  ```
+
+- **Analyze Cryptographic Inventory & PQC Readiness**:
+  ```bash
+  python3 scripts/analyze_cbom.py oss/cbom.json \
+    --sbom oss/sbom.cyclonedx.json \
+    --markdown oss/crypto-summary.md \
+    --step-summary
+  ```
+
+- **Attach / Fetch OCI BOM Layers**:
+  ```bash
+  bash scripts/attach_oci_bom.sh <IMAGE_REF>
+  python3 scripts/fetch_oci_cbom.py <IMAGE_REF>
+  ```
+
+### Architectural Decision Record
+
+For detailed architectural context, design rationale, trade-off analysis, and regulatory traceability, refer to:
+- [ADR-0001: Automated SBOM & CBOM Supply Chain Governance and Post-Quantum Cryptography Readiness](docs/adr/0001-automated-sbom-cbom-supply-chain-governance.md)
+
+---
+
 ## 📄 License
 MIT License
-
-
 
 ## 🛡️ Security & Cryptographic Posture
 This project tracks Software & Cryptographic Bill of Materials (SBOM & CBOM) and Post-Quantum Cryptography (PQC) readiness. See the latest [Cryptographic Audit & PQC Migration Report](docs/security/CRYPTOGRAPHIC_AUDIT.md).
