@@ -1,6 +1,9 @@
 # GitHub Helper Agent (`gh-helper-agent`)
 
+[![Build & Functional Verification](https://img.shields.io/badge/Build%20Verification-VERIFIED%20(2026--11--20)-brightgreen)](docs/BUILD_VERIFICATION.md)
+
 An automated maintenance and remediation agent for GitHub repositories.
+> Last functionally verified on `2026-11-20` by **Jeffs' Automated build and deploy agent** — see [Build & Functional Verification Report](docs/BUILD_VERIFICATION.md).
 
 `gh-helper-agent` connects to the GitHub REST API to inspect active repositories, review open issues and pull requests, auto-merge valid Dependabot updates, clean up duplicate security scan notifications, and execute fixes.
 
